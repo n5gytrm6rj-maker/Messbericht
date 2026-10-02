@@ -87,7 +87,8 @@ textarea.inp{min-height:110px; resize:vertical}
 .nav{position:fixed; left:0; right:0; bottom:0; background:var(--bg); border-top:1px solid var(--line); padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px))}
 .nav .inner{max-width:640px; margin:0 auto; display:flex; gap:10px}
 .nav .btn{flex:1}
-.nav .btn.back{flex:0 0 34%}
+.nav .btn.back{flex:0 0 26%}
+.nav #skipBtn{flex:0 0 30%; font-weight:550; color:var(--muted); padding:12px 6px}
 
 /* Bilder */
 .thumbs{display:grid; gap:14px; margin-top:16px}
@@ -234,8 +235,7 @@ const TERMIN_STEPS = [
     {k:'windgeschwindigkeit', label:'Windgeschwindigkeit', type:'text', ph:'z. B. ca. 3 m/s', chips:['windstill','schwach','mäßig','stark','böig']},
     {k:'windrichtung', label:'Windrichtung', type:'compass'}]},
   {sec:'Witterung', q:'Temperatur', fields:[{k:'temperatur', type:'text', mode:'decimal', ph:'in °C'}]},
-  {sec:'Institution', q:'Firma', fields:[{k:'firma', type:'text', recent:true}]},
-  {sec:'Institution', q:'Messleiter', fields:[{k:'messleiter', type:'text', recent:true}]},
+  {sec:'Institution', q:'Firma und Messleiter', fields:[{k:'firma', label:'Firma', type:'text', recent:true},{k:'messleiter', label:'Messleiter', type:'text', recent:true}]},
   {sec:'Messgeräte', q:'Messsysteme', hint:'Mehrfachauswahl möglich', fields:[{k:'systeme', type:'text', toggle:true, ph:'Mehrfachauswahl möglich', chips:SYSTEME.map(x=>x.name)}]}
 ];
 // Messobjekt innerhalb eines Termins
@@ -243,23 +243,73 @@ const OBJEKT_STEPS = [
   {sec:'Messobjekt', q:'Messobjekt', fields:[{k:'messobjekt', type:'text', recent:true}]},
   {sec:'Messobjekt', q:'Zweck der Messung', fields:[{k:'zweck', type:'textarea', recent:true}]}
 ];
+// Beim Termin gewählte Messsysteme (in fester Reihenfolge)
+function systemeVon(t){ const n=String((t&&t.systeme)||'').split(',').map(s=>s.trim()); return SYSTEME.filter(x=>n.includes(x.name)); }
+// Am Ende des Messobjekts folgt pro gewähltem Messsystem eine eigene Seite (Inhalte folgen noch)
+// Art der Erregung sowie Skizze und Fotos gelten für das ganze Messobjekt
+const OBJEKT_TAIL = [
+  {sec:'Messobjekt', q:'Art der Erregung', fields:[{k:'erregung', type:'text', ph:'Mehrfachauswahl möglich', toggle:true, chips:['Umgebungsanregung','Gehen','Laufen','Springen','Wippen','Fersenschlag','Impulshammer']}]},
+  {sec:'Messobjekt', q:'Skizze und Fotos', images:true}
+];
+// Pro Messsystem zwei Seiten: (1) Messdauer + Sensorauswahl, (2) Sensororte aller gewählten Sensoren
+const SYS_CFG = {
+  ni:      { dauer:{def:'10 s', chips:['10 s','30 s','60 s','120 s']}, sensoren:['71','72','73','74','75','76'] },
+  arduino: { dauer:{def:'variabel', chips:['variabel','60 s','120 s','300 s']}, sensoren:['01','02','03'] },
+  phyphox: { dauer:{def:'41,0 s', chips:['1,3 s','2,5 s','5,1 s','10,2 s','20,5 s','41,0 s']}, sensorText:'iPhone13,1, (26.6.1)' }
+};
+// Gespeicherter Wert oder – solange nie etwas eingetragen wurde – die Voreinstellung
+const val = (o, k, def) => (o && o[k]!==undefined) ? o[k] : def;
+function sensorenVon(id, o){
+  const cfg=SYS_CFG[id];
+  if(cfg.sensorText){ const s=String(val(o,'sys_'+id+'_sensor',cfg.sensorText)).trim(); return s?[s]:[]; }
+  const gew=String(val(o,'sys_'+id+'_sensoren',cfg.sensoren.join(', '))).split(',').map(s=>s.trim()).filter(Boolean);
+  return cfg.sensoren.filter(n=>gew.includes(n));
+}
+const ortKey = (id, nr) => id==='phyphox' ? 'sys_phyphox_ort' : 'sys_'+id+'_ort_'+nr;
+function systemSeiten(x, o){
+  const cfg=SYS_CFG[x.id];
+  const dauer={k:'sys_'+x.id+'_dauer', label:'Messdauer', type:'text', def:cfg.dauer.def, chips:cfg.dauer.chips};
+  const sensorFeld = cfg.sensorText
+    ? {k:'sys_'+x.id+'_sensor', label:'Sensor', type:'text', def:cfg.sensorText, recent:true}
+    : {k:'sys_'+x.id+'_sensoren', label:'Verwendete Sensoren (antippen)', type:'text', toggle:true, chipsOnly:true, def:cfg.sensoren.join(', '), chips:cfg.sensoren};
+  const seiten=[{sec:'Messsystem', q:x.name, sys:x.id, part:1, fields:[dauer, sensorFeld]}];
+  const sens=sensorenVon(x.id,o);
+  if(sens.length) seiten.push({sec:x.name, q: cfg.sensorText ? 'Sensorort' : 'Sensororte', sys:x.id, part:2,
+    fields:sens.map(nr=>({k:ortKey(x.id,nr), label: cfg.sensorText ? 'Sensorort' : 'Sensor '+nr, type:'text', ph:'Lage, x-/y-Ausrichtung …', recent:true}))});
+  return seiten;
+}
+function objektSteps(){
+  const o = objekt ? objekt.data : {};
+  return OBJEKT_STEPS.concat(OBJEKT_TAIL, ...systemeVon(termin&&termin.data).map(x=>systemSeiten(x,o)));
+}
+const stepIndex = (sys, part) => objektSteps().findIndex(s=>s.sys===sys && s.part===part);
+// Messdauer und Sensorstandorte für Bericht und Übersichten zusammensetzen
+function sensorFelder(t, o, d){
+  const sys=systemeVon(t), mehr=sys.length>1, dauer=[], orte=[];
+  for(const x of sys){
+    const du=String(val(o,'sys_'+x.id+'_dauer',SYS_CFG[x.id].dauer.def)||'').trim();
+    if(du) dauer.push(mehr ? x.name+': '+du : du);
+    for(const nr of sensorenVon(x.id,o)){
+      const ort=String(o[ortKey(x.id,nr)]||'').trim();
+      const s = SYS_CFG[x.id].sensorText ? nr : 'Sensor '+nr;
+      orte.push((mehr ? x.name+', ' : '')+s+': '+(ort||'–'));
+    }
+  }
+  return { messdauer: dauer.join('\n') || (d&&d.messdauer) || '', sensorstandort: orte.join('\n') || (d&&d.sensorstandort) || '' };
+}
 // Einzelne Messung an einem Messobjekt (Nummer und Uhrzeit werden automatisch gesetzt)
 const MESSUNG_STEPS = [
-  {sec:'Messgeräte', q:'Messdauer', fields:[{k:'messdauer', type:'text', ph:'z. B. 120 s', chips:['60 s','120 s','300 s','600 s']}]},
-  {sec:'Messgeräte', q:'Sensorstandort', fields:[{k:'sensorstandort', type:'textarea', ph:'Lage des Sensors, x-/y-Ausrichtung …', recent:true}]},
-  {sec:'Art der Messung', q:'Art der Erregung', fields:[{k:'erregung', type:'text', ph:'Mehrfachauswahl möglich', toggle:true, chips:['Umgebungsanregung','Gehen','Laufen','Springen','Wippen','Fersenschlag','Impulshammer']}]},
   {sec:'Art der Messung', q:'Ergänzungen', fields:[{k:'personen', label:'Personenanzahl', type:'text', mode:'numeric'},{k:'gewicht', label:'Gewicht, Impulshammer', type:'text', ph:'z. B. 80 kg / 75 kg'},{k:'ergaenzungen_sonst', label:'Weitere Ergänzungen', type:'textarea'}]},
-  {sec:'Notizen', q:'Subjektive Beobachtungen', fields:[{k:'spuerbarkeit', label:'Spürbarkeit', type:'text', chips:['nicht spürbar','kaum spürbar','spürbar','deutlich spürbar','unangenehm']},{k:'sekundaer', label:'Sekundäreffekte', type:'textarea', chips:['keine','Geländer klappert','Geräusche'], toggle:true},{k:'notizen_sonst', label:'Weitere Notizen', type:'textarea'}]},
-  {sec:'Skizze', q:'Skizze und Fotos', images:true}
+  {sec:'Notizen', q:'Subjektive Beobachtungen', fields:[{k:'spuerbarkeit', label:'Spürbarkeit', type:'text', chips:['nicht spürbar','kaum spürbar','spürbar','deutlich spürbar','unangenehm']},{k:'sekundaer', label:'Sekundäreffekte', type:'textarea', chips:['keine','Geländer klappert','Geräusche'], toggle:true},{k:'notizen_sonst', label:'Weitere Notizen', type:'textarea'}]}
 ];
 // Diese Angaben schlägt eine neue Messung aus der vorherigen Messung am selben Messobjekt vor
-const CARRY_OVER = ['messdauer','sensorstandort'];
+const CARRY_OVER = [];
 const TERMIN_KEYS = ['datum','windgeschwindigkeit','windrichtung','temperatur','firma','messleiter'];
 const OBJEKT_KEYS = ['messobjekt','zweck'];
 const COMPASS = [['NW','Nordwest'],['N','Nord'],['NO','Nordost'],['W','West'],['–','windstill'],['O','Ost'],['SW','Südwest'],['S','Süd'],['SO','Südost']];
 const REQUIRED_T = ['datum'];
 const REQUIRED_O = ['messobjekt','zweck'];
-const REQUIRED_M = ['messdauer','sensorstandort','erregung'];
+const REQUIRED_M = [];
 
 /* ---------- IndexedDB ---------- */
 let _db;
@@ -310,7 +360,7 @@ let selected = new Set();
 let selectMode = false;
 let saveTimer = null;
 
-const stepsOf = k => ({termin:TERMIN_STEPS, objekt:OBJEKT_STEPS, messung:MESSUNG_STEPS})[k];
+const stepsOf = k => k==='termin' ? TERMIN_STEPS : k==='objekt' ? objektSteps() : MESSUNG_STEPS;
 const storeOf = k => ({termin:'termine', objekt:'objekte', messung:'messungen'})[k];
 
 async function refresh(){
@@ -356,6 +406,7 @@ const missing = (d, req) => req.filter(k=>!String(d[k]||'').trim());
 function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(saveCur,300); }
 async function saveCur(){ clearTimeout(saveTimer); if(!cur) return; cur.updated=Date.now(); await put(storeOf(kind),cur); }
 async function leave(){ await saveCur(); cur=null; }
+async function deleteObjektBilder(o){ for(const im of await imgsOf(o.id)) await del('bilder',im.id); }
 async function deleteMessung(m){ for(const im of await imgsOf(m.id)) await del('bilder',im.id); await del('messungen',m.id); }
 /* ---------- Bilder ---------- */
 function loadImage(blob){ return new Promise((res,rej)=>{ const u=URL.createObjectURL(blob); const i=new Image(); i.onload=()=>{ res(i); }; i.onerror=rej; i.src=u; }); }
@@ -456,7 +507,7 @@ async function showTermin(){
   const t=termin.data, os=objekteOf(termin.id), alle=messungenOfT(termin.id);
   const rows = [
     ['Datum', fmtDate(t.datum), 0], ['Windgeschwindigkeit', t.windgeschwindigkeit, 1], ['Windrichtung', t.windrichtung, 1],
-    ['Temperatur', fmtTemp(t.temperatur), 2], ['Firma', t.firma, 3], ['Messleiter', t.messleiter, 4], ['Messsysteme', t.systeme, 5]
+    ['Temperatur', fmtTemp(t.temperatur), 2], ['Firma', t.firma, 3], ['Messleiter', t.messleiter, 3], ['Messsysteme', t.systeme, 4]
   ].map(([l,v,i])=>`<button class="rv" data-tstep="${i}"><span class="k">${l}</span><span class="v">${v?esc(v):'–'}</span></button>`).join('');
   const items = os.map(o=>{
     const n=messungenOfO(o.id).length;
@@ -483,7 +534,7 @@ async function showTermin(){
         if(x==='zip'){ close(); exportZip(alle); }
         if(x==='del'){ if(confirm('Messtermin mit '+os.length+' Messobjekten und '+alle.length+' Messungen löschen?')){
           for(const m of alle) await deleteMessung(m);
-          for(const o of os) await del('objekte',o.id);
+          for(const o of os){ await deleteObjektBilder(o); await del('objekte',o.id); }
           await del('termine',termin.id); close(); showHome(); } }
         if(x==='close') close();
       });
@@ -503,16 +554,29 @@ async function showObjekt(){
   if(!objekt) return showTermin();
   termin = termine.find(t=>t.id===objekt.tid);
   const o=objekt.data, ms=messungenOfO(objekt.id);
+  const sysListe = systemeVon(termin.data);
+  const oImgs = await imgsOf(objekt.id);
   const rows = [['Messobjekt', o.messobjekt, 0], ['Zweck der Messung', o.zweck, 1]]
-    .map(([l,v,i])=>`<button class="rv" data-ostep="${i}"><span class="k">${l}</span><span class="v ${v?'':'missing'}">${v?esc(v):'fehlt noch'}</span></button>`).join('');
+    .map(([l,v,i])=>`<button class="rv" data-ostep="${i}"><span class="k">${l}</span><span class="v ${v?'':'missing'}">${v?esc(v):'fehlt noch'}</span></button>`).join('')
+    + `<h3>Anregung und Skizze</h3>
+      <button class="rv" data-ostep="${OBJEKT_STEPS.length}"><span class="k">Art der Erregung</span><span class="v">${o.erregung?esc(o.erregung):'–'}</span></button>
+      <button class="rv" data-ostep="${OBJEKT_STEPS.length+1}"><span class="k">Skizze und Fotos</span><span class="v">${oImgs.length?oImgs.length+' Bild'+(oImgs.length>1?'er':''):'–'}</span></button>`
+    + `<h3>Messsysteme</h3>` + (sysListe.length
+      ? sysListe.map(x=>{
+          const sens=sensorenVon(x.id,o), du=val(o,'sys_'+x.id+'_dauer',SYS_CFG[x.id].dauer.def);
+          const sTxt = SYS_CFG[x.id].sensorText ? sens.join('') : (sens.length ? 'Sensoren '+sens.join(', ') : 'keine Sensoren');
+          let h = `<button class="rv" data-ostep="${stepIndex(x.id,1)}"><span class="k">${esc(x.name)}</span><span class="v">${esc([du,sTxt].filter(Boolean).join(', '))||'–'}</span></button>`;
+          if(sens.length) h += `<button class="rv" data-ostep="${stepIndex(x.id,2)}"><span class="k">Sensororte</span><span class="v">${esc(sens.map(nr=>(SYS_CFG[x.id].sensorText?'':nr+': ')+(o[ortKey(x.id,nr)]||'–')).join('\n'))}</span></button>`;
+          return h; }).join('')
+      : `<p class="muted small">Beim Messtermin sind keine Messsysteme ausgewählt.</p>`);
   const items = ms.map(m=>{
     const d=m.data, miss=missing(d,REQUIRED_M).length, on=selected.has(m.id);
     return `<li class="item">
       ${selectMode?`<button class="check ${on?'on':''}" data-sel="${m.id}" aria-label="Auswählen">${on?'✓':''}</button>`:''}
       <button class="open" data-open="${m.id}">
         <span class="num">${esc(d.nummer||'–')}</span>
-        <span class="main"><span class="title">${esc(d.erregung||'Erregung fehlt noch')}</span>
-        <span class="meta">${esc(d.uhrzeit||'')} Uhr${d.messdauer?', '+esc(d.messdauer):''}</span></span>
+        <span class="main"><span class="title">${esc(d.uhrzeit||'')} Uhr</span>
+        <span class="meta">${esc(d.spuerbarkeit||d.notizen_sonst||'')}</span></span>
         <span class="tag ${miss?'':'done'}">${miss?'Entwurf':'Fertig'}</span>
       </button></li>`;
   }).join('');
@@ -548,7 +612,7 @@ async function showObjekt(){
         if(x==='zip'){ close(); exportZip(ms); }
         if(x==='del'){ if(confirm('Messobjekt mit allen '+ms.length+' Messungen löschen?')){
           for(const m of ms) await deleteMessung(m);
-          await del('objekte',objekt.id); close(); showTermin(); } }
+          await deleteObjektBilder(objekt); await del('objekte',objekt.id); close(); showTermin(); } }
         if(x==='close') close();
       });
   window.scrollTo(0,0);
@@ -566,7 +630,7 @@ async function newMessung(){
 
 /* ---------- Übersicht einer Messung ---------- */
 async function showReview(){
-  const d=cur.data, t=termin.data, o=objekt.data, miss=missing(d,REQUIRED_M), imgs=await imgsOf(cur.id);
+  const d=cur.data, t=termin.data, o=objekt.data, sf=sensorFelder(t,o,d), miss=missing(d,REQUIRED_M), imgs=(await imgsOf(objekt.id)).concat(await imgsOf(cur.id));
   let html = `<h3>Messtermin</h3>
     <button class="rv" data-up="t"><span class="k">Datum</span><span class="v">${esc(fmtDate(t.datum))||'–'}</span></button>
     <button class="rv" data-up="t"><span class="k">Witterung</span><span class="v">${esc([t.windgeschwindigkeit,t.windrichtung,fmtTemp(t.temperatur)].filter(Boolean).join(', '))||'–'}</span></button>
@@ -575,6 +639,10 @@ async function showReview(){
     <h3>Messobjekt</h3>
     <button class="rv" data-up="o"><span class="k">Messobjekt</span><span class="v">${esc(o.messobjekt)||'–'}</span></button>
     <button class="rv" data-up="o"><span class="k">Zweck der Messung</span><span class="v">${esc(o.zweck)||'–'}</span></button>
+    <button class="rv" data-up="o"><span class="k">Art der Erregung</span><span class="v">${esc(o.erregung||d.erregung)||'–'}</span></button>
+    <button class="rv" data-up="o"><span class="k">Messdauer</span><span class="v">${esc(sf.messdauer)||'–'}</span></button>
+    <button class="rv" data-up="o"><span class="k">Sensorstandorte</span><span class="v">${esc(sf.sensorstandort)||'–'}</span></button>
+    <button class="rv" data-up="o"><span class="k">Skizze und Fotos</span><span class="v">${imgs.length?imgs.length+' Bild'+(imgs.length>1?'er':''):'–'}</span></button>
     <h3>Messung</h3>
     <div class="rv"><span class="k">Nummer</span><span class="v">${esc(d.nummer)}</span></div>
     <div class="rv"><span class="k">Uhrzeit</span><span class="v">${esc(d.uhrzeit)} Uhr</span></div>`;
@@ -584,7 +652,6 @@ async function showReview(){
     const v=d[f.k]||'', req=REQUIRED_M.includes(f.k);
     html += `<button class="rv" data-go="${i}"><span class="k">${esc(f.label||s.q)}</span><span class="v ${!v&&req?'missing':''}">${v?esc(v):(req?'fehlt noch':'–')}</span></button>`;
   }); });
-  html += `<h3>Skizze</h3><button class="rv" data-go="${MESSUNG_STEPS.length-1}"><span class="k">Bilder</span><span class="v">${imgs.length?imgs.length+' Bild'+(imgs.length>1?'er':''):'–'}</span></button>`;
   $('#app').innerHTML = `<div class="wrap review">
     <div class="bar"><button class="icon-btn" id="upBtn">Objekt</button><h2>Messung ${esc(d.nummer||'')}</h2><button class="icon-btn" id="moreBtn">Mehr</button></div>
     ${miss.length?`<p class="small" style="color:var(--danger)">${miss.length} Pflichtangabe${miss.length>1?'n':''} offen. Tippe auf eine Zeile, um sie zu ergänzen.</p>`:''}
@@ -620,6 +687,8 @@ function fieldHTML(f, single){
       <input class="inp" id="${id}" data-k="${f.k}" value="${esc(v)}" placeholder="oder frei eingeben, z. B. drehend" enterkeyhint="next">`;
   } else if(f.type==='textarea'){
     h += `<textarea class="inp" id="${id}" data-k="${f.k}" placeholder="${esc(f.ph||'')}">${esc(v)}</textarea>`;
+  } else if(f.chipsOnly){
+    /* nur Auswahl per Antippen */
   } else {
     const t = f.type==='date'?'date':f.type==='time'?'time':'text';
     h += `<input class="inp" id="${id}" type="${t}" data-k="${f.k}" value="${esc(v)}" placeholder="${esc(f.ph||'')}" ${f.mode?`inputmode="${f.mode}"`:''} enterkeyhint="next" autocomplete="off">`;
@@ -636,7 +705,8 @@ function fieldHTML(f, single){
 }
 
 async function showStep(){
-  const STEPS = stepsOf(kind), s = STEPS[step];
+  let STEPS = stepsOf(kind), s = STEPS[step];
+  if(s && !s.images){ let neu=false; s.fields.forEach(f=>{ if(f.def!==undefined && cur.data[f.k]===undefined){ cur.data[f.k]=f.def; neu=true; } }); if(neu){ await saveCur(); STEPS=stepsOf(kind); s=STEPS[step]; } }
   const pct = Math.round(step/STEPS.length*100);
   const tape = `<div class="tape"><div class="fill" style="width:${pct}%"></div><div class="ticks">${STEPS.map((x,i)=>`<button data-go="${i}" aria-label="Schritt ${i+1}: ${esc(x.q)}"></button>`).join('')}</div></div>`;
   let body;
@@ -663,7 +733,8 @@ async function showStep(){
   </div>
   <div class="nav"><div class="inner">
     <button class="btn back" id="backBtn" ${step===0?'disabled':''}>Zurück</button>
-    <button class="btn primary" id="nextBtn">${last?({termin:'Termin fertig', objekt:'Objekt fertig', messung:'Zur Übersicht'})[kind]:'Weiter'}</button></div></div>`;
+    <button class="btn" id="skipBtn">Überspringen</button>
+    <button class="btn primary" id="nextBtn">${last?({termin:'Fertig', objekt:'Fertig', messung:'Übersicht'})[kind]:'Weiter'}</button></div></div>`;
   bindStep(s);
   window.scrollTo(0,0);
   if(!s.images){ const first=document.querySelector('.inp'); if(first && !('ontouchstart' in window)) first.focus(); }
@@ -675,7 +746,17 @@ function bindStep(s){
   $('#upBtn').onclick = ()=> kind==='termin' ? showHome() : kind==='objekt' ? showTermin() : showObjekt();
   $('#revBtn').onclick = finishWizard;
   $('#backBtn').onclick = ()=>{ if(step>0){ step--; saveCur(); showStep(); } };
-  $('#nextBtn').onclick = ()=>{ saveCur(); if(step<STEPS.length-1){ step++; showStep(); } else finishWizard(); };
+  $('#nextBtn').onclick = ()=>{ saveCur(); if(step<stepsOf(kind).length-1){ step++; showStep(); } else finishWizard(); };
+  // Seite leer lassen: Eingaben dieser Seite verwerfen und weiter (Bilder bleiben unangetastet)
+  $('#skipBtn').onclick = ()=>{
+    if(!s.images){
+      const keys = s.fields.map(f=>f.k);
+      const hat = keys.some(k=>String(cur.data[k]||'').trim());
+      if(hat && !confirm('Angaben auf dieser Seite leeren und überspringen?')) return;
+      keys.forEach(k=>{ cur.data[k]=''; });
+    }
+    saveCur(); if(step<stepsOf(kind).length-1){ step++; showStep(); } else finishWizard();
+  };
   document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{ step=+b.dataset.go; saveCur(); showStep(); });
   document.querySelectorAll('.inp[data-k]').forEach(el=>{
     el.oninput = ()=>{ cur.data[el.dataset.k]=el.value; scheduleSave(); syncChips(el.dataset.k); };
@@ -744,14 +825,13 @@ function reportFields(m){
     windgeschwindigkeit:t.windgeschwindigkeit, windrichtung:t.windrichtung, temperatur:fmtTemp(t.temperatur),
     firma:t.firma, messleiter:t.messleiter,
     zweck:o.zweck, messobjekt:o.messobjekt, ...geraeteFelder(t,d),
-    messdauer:d.messdauer, sensorstandort:d.sensorstandort, erregung:d.erregung,
+    ...sensorFelder(t,o,d), erregung:o.erregung||d.erregung,
     ergaenzungen: lines([['Personenanzahl',d.personen],['Gewicht, Impulshammer',d.gewicht]], d.ergaenzungen_sonst),
     notizen: lines([['Spürbarkeit',d.spuerbarkeit],['Sekundäreffekte',d.sekundaer]], d.notizen_sonst) };
 }
 // Messgeräte aus den beim Termin gewählten Systemen zusammensetzen
 function geraeteFelder(t, d){
-  const gew = String(t.systeme||'').split(',').map(s=>s.trim()).filter(Boolean)
-    .map(n=>SYSTEME.find(x=>x.name===n)).filter(Boolean);
+  const gew = systemeVon(t);
   if(!gew.length) return {geraetetyp:d.geraetetyp, aafilter:d.aafilter, abtastrate:d.abtastrate}; // ältere Messungen
   const mehr = gew.length>1;
   const liste = k => gew.map(x=>[x.name, String(settings.sys[x.id][k]||'').trim()]).filter(p=>p[1])
@@ -762,7 +842,7 @@ function fileName(m){ const d=m.data, t=terminOf(m), o=objektOf(m); return (safe
 async function buildDocx(m){
   if(!TEMPLATE_BYTES) TEMPLATE_BYTES=b64ToBytes(TEMPLATE_B64);
   const images=[];
-  for(const im of await imgsOf(m.id)) images.push({bytes:new Uint8Array(await im.blob.arrayBuffer()), width:im.w, height:im.h, caption:im.caption});
+  for(const im of (await imgsOf(m.oid)).concat(await imgsOf(m.id))) images.push({bytes:new Uint8Array(await im.blob.arrayBuffer()), width:im.w, height:im.h, caption:im.caption});
   const zip = await buildReportDocx(JSZip, TEMPLATE_BYTES, reportFields(m), images);
   return zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document', compression:'DEFLATE'});
 }
