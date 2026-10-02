@@ -1,6 +1,6 @@
 // Offline-Cache für die Messbericht-App.
 // Nach einer Änderung an index.html die Versionsnummer erhöhen.
-const CACHE = 'messbericht-v43';
+const CACHE = 'messbericht-v45';
 const FILES = ['./', './index.html', './manifest.json', './apple-touch-icon.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
