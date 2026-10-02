@@ -146,6 +146,13 @@ details.sek[open] .sp{visibility:hidden}
 details.sek[open]{padding-bottom:8px}
 details.sek .rv:last-child{border-bottom:0}
 details.sek h4.sub{font-size:13px; font-weight:650; color:var(--muted); margin:16px 0 2px}
+.pop-bg{position:fixed; inset:0; z-index:25}
+.pop{position:absolute; top:calc(env(safe-area-inset-top,0px) + 58px); right:12px; width:260px; background:var(--panel); border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,.22); overflow:hidden}
+.pop-title{padding:10px 16px; font-size:13px; color:var(--muted); border-bottom:1px solid var(--line)}
+.pop-item{display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; min-height:46px; padding:10px 16px; background:none; border:0; border-bottom:1px solid var(--line); font-size:17px; color:var(--ink); text-align:left}
+.pop-item:last-child{border-bottom:0}
+.pop-item.danger{color:var(--danger)}
+.pop-item:disabled{opacity:.4}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 </head>
@@ -428,6 +435,10 @@ const del = (s,k) => tx(s,'readwrite',st=>st.delete(k));
 const imgsOf = async mid => (await tx('bilder','readonly',st=>st.index('mid').getAll(mid))).sort((a,b)=>a.order-b.order);
 
 /* ---------- Hilfsfunktionen ---------- */
+// iOS-Symbole „square.and.arrow.up“ (Teilen/Export) und „trash“ (Löschen)
+const shareIcon = () => '<svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true"><path d="M10 13V2M6 5.5L10 1.5l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 8.5H4.5a1.5 1.5 0 0 0-1.5 1.5v9a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5v-9a1.5 1.5 0 0 0-1.5-1.5h-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+const trashIcon = () => '<svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true"><path d="M2.5 5h15M7.5 5V3.2c0-.7.5-1.2 1.2-1.2h2.6c.7 0 1.2.5 1.2 1.2V5M4.5 5l.9 13.4c.1.9.8 1.6 1.7 1.6h5.8c.9 0 1.6-.7 1.7-1.6L15.5 5M8.2 9v7.5M11.8 9v7.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function kurzDatum(iso){ const m=/^\d{4}-(\d\d)-(\d\d)$/.exec(iso||''); return m ? m[2]+'.'+m[1] : ''; }
 // iOS-typisches Drei-Punkte-Symbol für „Mehr“
 const moreIcon = () => '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="19" cy="12" r="2" fill="currentColor"/></svg>';
 // iOS-typischer Doppelpfeil nach rechts (chevron.forward.2) für „Überspringen“
@@ -636,17 +647,10 @@ async function showTermin(){
   enableSwipe();
   document.querySelectorAll('[data-tstep]').forEach(b=>b.onclick=()=>{ cur=termin; kind='termin'; step=+b.dataset.tstep; showStep(); });
   document.querySelectorAll('[data-obj]').forEach(b=>b.onclick=()=>{ objekt=os.find(o=>o.id===b.dataset.obj); showObjekt(); });
-  $('#moreBtn').onclick = ()=>sheet(`<h3>Messtermin ${esc(fmtDate(t.datum))}</h3>
-      ${alle.length?`<button class="btn" data-x="zip">Alle ${alle.length} Berichte als ZIP</button>`:''}
-      <button class="btn danger" data-x="del">Messtermin löschen</button>
-      <button class="btn" data-x="close">Schließen</button>`, async (x,close)=>{
-        if(x==='zip'){ close(); exportZip(alle); }
-        if(x==='del'){ if(confirm('Messtermin mit '+os.length+' Messobjekten und '+alle.length+' Messungen löschen?')){
-          for(const m of alle) await deleteMessung(m);
-          for(const o of os){ await deleteObjektBilder(o); await del('objekte',o.id); }
-          await del('termine',termin.id); close(); showHome(); } }
-        if(x==='close') close();
-      });
+  $('#moreBtn').onclick = ()=>popMenu('Messtermin: '+(kurzDatum(t.datum)||'ohne Datum'), [
+    {icon:shareIcon(), label:'Export', disabled:!alle.length, run:()=>exportZip(alle)},
+    {icon:trashIcon(), label:'Termin löschen', danger:true, run:()=>loeschenNachFrage('termin', termin.id)}
+  ]);
   window.scrollTo(0,0);
 }
 
@@ -715,16 +719,10 @@ async function showObjekt(){
     if(selectMode){ selected.has(id)?selected.delete(id):selected.add(id); showObjekt(); return; }
     cur=ms.find(m=>m.id===id); kind='messung'; showReview();
   });
-  $('#moreBtn').onclick = ()=>sheet(`<h3>${esc(o.messobjekt||'Messobjekt')}</h3>
-      ${ms.length?`<button class="btn" data-x="zip">Alle ${ms.length} Berichte als ZIP</button>`:''}
-      <button class="btn danger" data-x="del">Messobjekt löschen</button>
-      <button class="btn" data-x="close">Schließen</button>`, async (x,close)=>{
-        if(x==='zip'){ close(); exportZip(ms); }
-        if(x==='del'){ if(confirm('Messobjekt mit allen '+ms.length+' Messungen löschen?')){
-          for(const m of ms) await deleteMessung(m);
-          await deleteObjektBilder(objekt); await del('objekte',objekt.id); close(); showTermin(); } }
-        if(x==='close') close();
-      });
+  $('#moreBtn').onclick = ()=>popMenu('Messobjekt: '+(o.messobjekt||'ohne Namen'), [
+    {icon:shareIcon(), label:'Export', disabled:!ms.length, run:()=>exportZip(ms)},
+    {icon:trashIcon(), label:'Messobjekt löschen', danger:true, run:()=>loeschenNachFrage('objekt', objekt.id)}
+  ]);
   window.scrollTo(0,0);
 }
 
@@ -771,18 +769,27 @@ async function showReview(){
     ${miss.length?`<p class="small" style="color:var(--danger)">${miss.length} Pflichtangabe${miss.length>1?'n':''} offen. Tippe auf eine Zeile, um sie zu ergänzen.</p>`:''}
     ${sektionen('m:'+cur.id, html)}
   </div>
-  <div class="nav"><div class="inner">
+  <div class="nav"><div class="inner wiz">
+    <button class="btn" id="exportBtn">Daten exportieren</button>
     <button class="btn primary" id="nextMBtn">Nächste Messung</button></div></div>`;
   $('#upBtn').onclick=showObjekt;
   $('#nextMBtn').onclick=async()=>{ await saveCur(); newMessung(); };
+  $('#exportBtn').onclick=async()=>{ await saveCur(); await refresh();
+    const mo=messungenOfO(objekt.id), mt=messungenOfT(termin.id);
+    sheet(`<h3>Daten exportieren</h3>
+      <p class="muted small" style="margin:0">Die Word-Berichte werden als ZIP erstellt.</p>
+      <button class="btn primary" data-x="obj">Messobjekt „${esc(o.messobjekt||'ohne Namen')}“ (${mo.length} Bericht${mo.length===1?'':'e'})</button>
+      ${mt.length>mo.length?`<button class="btn" data-x="ter">Ganzer Messtermin ${esc(fmtDate(t.datum))} (${mt.length} Berichte)</button>`:''}
+      <button class="btn" data-x="close">Abbrechen</button>`, (x,close)=>{
+        if(x==='obj'){ close(); exportZip(mo); }
+        if(x==='ter'){ close(); exportZip(mt); }
+        if(x==='close') close();
+      }); };
   document.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=> b.dataset.up==='t' ? showTermin() : showObjekt());
   document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{ step=+b.dataset.go; showStep(); });
-  $('#moreBtn').onclick=()=>sheet(`<h3>Messung ${esc(d.nummer||'')}</h3>
-      <button class="btn danger" data-x="del">Messung löschen</button>
-      <button class="btn" data-x="close">Schließen</button>`, async (x,close)=>{
-        if(x==='del'){ if(confirm('Messung '+(d.nummer||'')+' mit allen Bildern löschen?')){ await deleteMessung(cur); cur=null; close(); showObjekt(); } }
-        if(x==='close') close();
-      });
+  $('#moreBtn').onclick=()=>popMenu('Messung: '+(d.nummer||''), [
+    {icon:trashIcon(), label:'Messung löschen', danger:true, run:()=>loeschenNachFrage('messung', cur.id)}
+  ]);
   window.scrollTo(0,0);
 }
 
@@ -824,17 +831,20 @@ async function loeschenNachFrage(typ, id){
     const t=termine.find(x=>x.id===id); if(!t) return false;
     const no=objekteOf(id).length, nm=messungenOfT(id).length;
     if(!confirm('Messtermin '+(fmtDate(t.data.datum)||'')+' mit '+no+' Messobjekt'+(no===1?'':'en')+' und '+nm+' Messung'+(nm===1?'':'en')+' wirklich löschen?')) return false;
+    if(cur && (cur.id===t.id || cur.tid===t.id)) cur=null;
     await deleteTermin(t); showHome(); return true;
   }
   if(typ==='objekt'){
     const o=objekte.find(x=>x.id===id); if(!o) return false;
     const nm=messungenOfO(id).length;
     if(!confirm('Messobjekt „'+(o.data.messobjekt||'ohne Namen')+'“ mit '+nm+' Messung'+(nm===1?'':'en')+' wirklich löschen?')) return false;
+    if(cur && (cur.id===o.id || cur.oid===o.id)) cur=null;
     await deleteObjekt(o); showTermin(); return true;
   }
   if(typ==='messung'){
     const m=messungen.find(x=>x.id===id); if(!m) return false;
     if(!confirm('Messung '+(m.data.nummer||'')+' wirklich löschen?')) return false;
+    if(cur && cur.id===m.id) cur=null;
     await deleteMessung(m); showObjekt(); return true;
   }
   return false;
@@ -855,6 +865,16 @@ function sektionen(prefix, html){
   }
   setTimeout(()=>document.querySelectorAll('details.sek').forEach(d=>d.ontoggle=()=>{ d.open?offeneSektionen.add(d.dataset.sek):offeneSektionen.delete(d.dataset.sek); }),0);
   return out;
+}
+
+/* ---------- iOS-artiges Menü hinter ••• ---------- */
+function popMenu(titel, items){
+  const bg=document.createElement('div'); bg.className='pop-bg';
+  bg.innerHTML=`<div class="pop" role="menu"><div class="pop-title">${esc(titel)}</div>${items.map((it,i)=>`<button class="pop-item ${it.danger?'danger':''}" role="menuitem" data-i="${i}" ${it.disabled?'disabled':''}><span>${esc(it.label)}</span>${it.icon}</button>`).join('')}</div>`;
+  document.body.appendChild(bg);
+  const close=()=>bg.remove();
+  bg.onclick=e=>{ if(e.target===bg) close(); };
+  bg.querySelectorAll('.pop-item').forEach(b=>b.onclick=async()=>{ close(); if(cur) await saveCur(); await refresh(); items[+b.dataset.i].run(); });
 }
 /* ---------- Abfrage (für Termin, Messobjekt und Messung) ---------- */
 function recentValues(k){
@@ -1111,8 +1131,17 @@ async function exportZip(ms){
   }catch(e){ s.close(); alert('ZIP konnte nicht erstellt werden: '+e.message); }
 }
 // Teilen muss direkt durch einen Tipp ausgelöst werden – daher zweistufig
-function offerFile(file){
+// Direkt das iOS-Teilen-Menü öffnen („In Dateien sichern“). Lässt iOS das ohne erneuten Tipp
+// nicht zu (z. B. wenn das Erstellen zu lange gedauert hat), erscheint ein Knopf dafür.
+async function offerFile(file){
   const canShare = navigator.canShare && navigator.canShare({files:[file]});
+  if(canShare){
+    try{ await navigator.share({files:[file]}); toast('Gespeichert'); return; }
+    catch(err){ if(err && err.name==='AbortError') return; }
+  }
+  offerFileSheet(file, canShare);
+}
+function offerFileSheet(file, canShare){
   const url = URL.createObjectURL(file);
   sheet(`<h3>${esc(file.name)}</h3>
     <p class="muted small" style="margin:0">${(file.size/1024).toFixed(0)} KB. ${canShare?'Im Teilen-Menü „In Dateien sichern“ wählen.':'Datei wird heruntergeladen.'}</p>
