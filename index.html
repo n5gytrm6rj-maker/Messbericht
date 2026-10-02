@@ -53,8 +53,8 @@ button{cursor:pointer}
 .item{display:flex; align-items:center; gap:12px; padding:14px 2px; border-bottom:1px solid var(--line)}
 .item .num{font-variant-numeric:tabular-nums; font-weight:750; font-size:22px; min-width:2.6em}
 .item .main{flex:1; min-width:0}
-.item .title{font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.item .meta{font-size:14px; color:var(--muted)}
+.item .title{display:block; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.item .meta{display:block; font-size:14px; color:var(--muted)}
 .item .open{background:none; border:0; text-align:left; display:flex; gap:12px; align-items:center; flex:1; min-width:0; padding:0}
 .check{width:28px; height:28px; border-radius:7px; border:2px solid var(--line); display:grid; place-items:center; flex:none; background:var(--panel)}
 .check.on{background:var(--steel); border-color:var(--steel); color:#fff}
@@ -98,7 +98,7 @@ textarea.inp{min-height:110px; resize:vertical}
 
 /* Übersicht */
 .review h3{font-size:15px; color:var(--steel); margin:22px 0 4px}
-.rv{display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); background:none; border-left:0; border-right:0; border-top:0; width:100%; text-align:left}
+.rv{color:inherit; font:inherit; display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); background:none; border-left:0; border-right:0; border-top:0; width:100%; text-align:left}
 .rv .k{flex:0 0 42%; color:var(--muted); font-size:15px}
 .rv .v{flex:1; white-space:pre-wrap; word-break:break-word}
 .rv .v.missing{color:var(--danger); font-size:15px}
@@ -199,28 +199,52 @@ async function buildReportDocx(JSZipLib, templateBytes, fields, images) {
 const TEMPLATE_B64 = "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";
 
 /* ---------- Einstellungen (Standardwerte) ---------- */
-const DEFAULTS = {
-  firma: 'TU München',
-  messleiter: 'Clemens Koller',
-  geraetetyp: 'MPU 6050 – Beschleunigungssensor ±4g\nArduino, MKR ZERO - Mikrocontroller',
-  aafilter: '94 Hz (Tiefpassfilter)',
-  abtastrate: '200 Hz (1/0.005s)'
+const SYSTEME = [
+  {id:'ni', name:'National Instruments'},
+  {id:'arduino', name:'Arduino'},
+  {id:'phyphox', name:'Phyphox'}
+];
+// Gerätedaten pro Messsystem: landen im Bericht unter „Messgeräte“
+const SYS_DEFAULTS = {
+  ni:      {geraetetyp:'National Instruments', aafilter:'', abtastrate:''},
+  arduino: {geraetetyp:'MPU 6050 – Beschleunigungssensor ±4g\nArduino, MKR ZERO - Mikrocontroller', aafilter:'94 Hz (Tiefpassfilter)', abtastrate:'200 Hz (1/0.005s)'},
+  phyphox: {geraetetyp:'Phyphox (Smartphone-App)', aafilter:'', abtastrate:''}
 };
-function loadSettings(){ try{ return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem('mb_settings')||'{}')); }catch(e){ return Object.assign({}, DEFAULTS); } }
+const DEFAULTS = { firma:'TU München', messleiter:'Clemens Koller' };
+function freshSettings(){ return Object.assign({}, DEFAULTS, {sys: JSON.parse(JSON.stringify(SYS_DEFAULTS))}); }
+function loadSettings(){
+  const s = freshSettings();
+  try{
+    const st = JSON.parse(localStorage.getItem('mb_settings')||'{}');
+    if(st.firma!=null) s.firma=st.firma;
+    if(st.messleiter!=null) s.messleiter=st.messleiter;
+    if(st.sys) for(const k in s.sys) Object.assign(s.sys[k], st.sys[k]||{});
+    else ['geraetetyp','aafilter','abtastrate'].forEach(k=>{ if(st[k]!=null) s.sys.arduino[k]=st[k]; }); // alte Einstellungen
+  }catch(e){}
+  return s;
+}
 function saveSettings(s){ try{ localStorage.setItem('mb_settings', JSON.stringify(s)); }catch(e){} }
 let settings = loadSettings();
 
 /* ---------- Abfrage-Schritte ---------- */
-const STEPS = [
-  {sec:'Allgemeines', q:'Nummer der Messung', fields:[{k:'nummer', type:'text', mode:'numeric'}]},
-  {sec:'Allgemeines', q:'Datum und Uhrzeit', now:true, fields:[{k:'datum', label:'Datum', type:'date'},{k:'uhrzeit', label:'Uhrzeit', type:'time'}]},
-  {sec:'Witterung', q:'Windgeschwindigkeit', fields:[{k:'windgeschwindigkeit', type:'text', ph:'z. B. ca. 3 m/s', chips:['windstill','schwach','mäßig','stark','böig']}]},
-  {sec:'Witterung', q:'Windrichtung', fields:[{k:'windrichtung', type:'compass'}]},
+// Messtermin: einmal pro Termin, gilt für alle Messungen darin
+const TERMIN_STEPS = [
+  {sec:'Messtermin', q:'Datum', fields:[{k:'datum', type:'date'}], today:true},
+  {sec:'Witterung', q:'Wind', fields:[
+    {k:'windgeschwindigkeit', label:'Windgeschwindigkeit', type:'text', ph:'z. B. ca. 3 m/s', chips:['windstill','schwach','mäßig','stark','böig']},
+    {k:'windrichtung', label:'Windrichtung', type:'compass'}]},
   {sec:'Witterung', q:'Temperatur', fields:[{k:'temperatur', type:'text', mode:'decimal', ph:'in °C'}]},
-  {sec:'Institution', q:'Firma und Messleiter', fields:[{k:'firma', label:'Firma', type:'text'},{k:'messleiter', label:'Messleiter', type:'text'}]},
-  {sec:'Messung', q:'Zweck der Messung', fields:[{k:'zweck', type:'textarea', recent:true}]},
-  {sec:'Messung', q:'Messobjekt', fields:[{k:'messobjekt', type:'text', recent:true}]},
-  {sec:'Messgeräte', q:'Messgeräte', fields:[{k:'geraetetyp', label:'Gerätetyp', type:'textarea'},{k:'aafilter', label:'Anti-Aliasing-Filter', type:'text'},{k:'abtastrate', label:'Abtastrate', type:'text'}]},
+  {sec:'Institution', q:'Firma', fields:[{k:'firma', type:'text', recent:true}]},
+  {sec:'Institution', q:'Messleiter', fields:[{k:'messleiter', type:'text', recent:true}]},
+  {sec:'Messgeräte', q:'Messsysteme', hint:'Mehrfachauswahl möglich', fields:[{k:'systeme', type:'text', toggle:true, ph:'Mehrfachauswahl möglich', chips:SYSTEME.map(x=>x.name)}]}
+];
+// Messobjekt innerhalb eines Termins
+const OBJEKT_STEPS = [
+  {sec:'Messobjekt', q:'Messobjekt', fields:[{k:'messobjekt', type:'text', recent:true}]},
+  {sec:'Messobjekt', q:'Zweck der Messung', fields:[{k:'zweck', type:'textarea', recent:true}]}
+];
+// Einzelne Messung an einem Messobjekt (Nummer und Uhrzeit werden automatisch gesetzt)
+const MESSUNG_STEPS = [
   {sec:'Messgeräte', q:'Messdauer', fields:[{k:'messdauer', type:'text', ph:'z. B. 120 s', chips:['60 s','120 s','300 s','600 s']}]},
   {sec:'Messgeräte', q:'Sensorstandort', fields:[{k:'sensorstandort', type:'textarea', ph:'Lage des Sensors, x-/y-Ausrichtung …', recent:true}]},
   {sec:'Art der Messung', q:'Art der Erregung', fields:[{k:'erregung', type:'text', ph:'Mehrfachauswahl möglich', toggle:true, chips:['Umgebungsanregung','Gehen','Laufen','Springen','Wippen','Fersenschlag','Impulshammer']}]},
@@ -228,16 +252,27 @@ const STEPS = [
   {sec:'Notizen', q:'Subjektive Beobachtungen', fields:[{k:'spuerbarkeit', label:'Spürbarkeit', type:'text', chips:['nicht spürbar','kaum spürbar','spürbar','deutlich spürbar','unangenehm']},{k:'sekundaer', label:'Sekundäreffekte', type:'textarea', chips:['keine','Geländer klappert','Geräusche'], toggle:true},{k:'notizen_sonst', label:'Weitere Notizen', type:'textarea'}]},
   {sec:'Skizze', q:'Skizze und Fotos', images:true}
 ];
+// Diese Angaben schlägt eine neue Messung aus der vorherigen Messung am selben Messobjekt vor
+const CARRY_OVER = ['messdauer','sensorstandort'];
+const TERMIN_KEYS = ['datum','windgeschwindigkeit','windrichtung','temperatur','firma','messleiter'];
+const OBJEKT_KEYS = ['messobjekt','zweck'];
 const COMPASS = [['NW','Nordwest'],['N','Nord'],['NO','Nordost'],['W','West'],['–','windstill'],['O','Ost'],['SW','Südwest'],['S','Süd'],['SO','Südost']];
-const REQUIRED = ['nummer','datum','uhrzeit','zweck','messobjekt','messdauer','sensorstandort','erregung'];
+const REQUIRED_T = ['datum'];
+const REQUIRED_O = ['messobjekt','zweck'];
+const REQUIRED_M = ['messdauer','sensorstandort','erregung'];
 
 /* ---------- IndexedDB ---------- */
 let _db;
 function db(){
   if(_db) return Promise.resolve(_db);
   return new Promise((res,rej)=>{
-    const r = indexedDB.open('messbericht',1);
-    r.onupgradeneeded = ()=>{ const d=r.result; d.createObjectStore('messungen',{keyPath:'id'}); const b=d.createObjectStore('bilder',{keyPath:'id'}); b.createIndex('mid','mid'); };
+    const r = indexedDB.open('messbericht',3);
+    r.onupgradeneeded = ()=>{ const d=r.result;
+      if(!d.objectStoreNames.contains('messungen')) d.createObjectStore('messungen',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('bilder')){ const b=d.createObjectStore('bilder',{keyPath:'id'}); b.createIndex('mid','mid'); }
+      if(!d.objectStoreNames.contains('termine')) d.createObjectStore('termine',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('objekte')) d.createObjectStore('objekte',{keyPath:'id'});
+    };
     r.onsuccess = ()=>{ _db=r.result; res(_db); };
     r.onerror = ()=>rej(r.error);
   });
@@ -259,165 +294,69 @@ const pad = n => String(n).padStart(2,'0');
 function today(){ const d=new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
 function nowTime(){ const d=new Date(); return pad(d.getHours())+':'+pad(d.getMinutes()); }
 function fmtDate(iso){ if(!iso) return ''; const m=/^(\d{4})-(\d\d)-(\d\d)$/.exec(iso); return m? m[3]+'.'+m[2]+'.'+m[1] : iso; }
+function fmtTemp(v){ const t=String(v||'').trim(); return /^[-+−]?\d+([.,]\d+)?$/.test(t) ? t+' °C' : t; }
 function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2200); }
 function safeName(s){ return String(s||'').replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/Ä/g,'Ae').replace(/Ö/g,'Oe').replace(/Ü/g,'Ue').replace(/ß/g,'ss').replace(/[\\/:*?"<>|\s]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'').slice(0,60); }
 function b64ToBytes(b){ const s=atob(b); const a=new Uint8Array(s.length); for(let i=0;i<s.length;i++) a[i]=s.charCodeAt(i); return a; }
 
-let list = [];       // alle Messungen
-let cur = null;      // aktuelle Messung
+/* ---------- Zustand ---------- */
+let termine = [], objekte = [], messungen = [];
+let termin = null;   // geöffneter Messtermin
+let objekt = null;   // geöffnetes Messobjekt
+let cur = null;      // gerade bearbeitetes Objekt
+let kind = 'messung';// 'termin' | 'objekt' | 'messung'
 let step = 0;
 let selected = new Set();
 let selectMode = false;
 let saveTimer = null;
 
-async function refresh(){ list = (await getAll('messungen')).sort((a,b)=>(b.updated||0)-(a.updated||0)); }
-function nextNumber(){
-  let max = 0, width = 2;
-  for(const m of list){ const n = parseInt(m.data.nummer,10); if(!isNaN(n) && n>max){ max=n; width=Math.max(2,String(m.data.nummer).trim().length); } }
+const stepsOf = k => ({termin:TERMIN_STEPS, objekt:OBJEKT_STEPS, messung:MESSUNG_STEPS})[k];
+const storeOf = k => ({termin:'termine', objekt:'objekte', messung:'messungen'})[k];
+
+async function refresh(){
+  termine = await getAll('termine');
+  objekte = await getAll('objekte');
+  messungen = await getAll('messungen');
+  await migrate();
+  termine.sort((a,b)=> (b.data.datum||'').localeCompare(a.data.datum||'') || (b.created||0)-(a.created||0));
+  objekte.sort((a,b)=> (a.created||0)-(b.created||0));
+  messungen.sort((a,b)=> (parseInt(a.data.nummer,10)||0)-(parseInt(b.data.nummer,10)||0) || (a.created||0)-(b.created||0));
+}
+// Daten aus älteren App-Versionen in die Struktur Termin > Messobjekt > Messung einsortieren
+async function migrate(){
+  for(const m of messungen.filter(m=>!m.tid)){
+    let t = termine.find(t=>t._migr && t.data.datum===m.data.datum);
+    if(!t){
+      t = {id:uid(), created:m.created||Date.now(), updated:Date.now(), _migr:true, data:{}};
+      TERMIN_KEYS.forEach(k=>{ if(m.data[k]) t.data[k]=m.data[k]; });
+      termine.push(t); await put('termine',t);
+    }
+    m.tid = t.id; await put('messungen',m);
+  }
+  for(const m of messungen.filter(m=>!m.oid)){
+    let o = objekte.find(o=>o.tid===m.tid && (o.data.messobjekt||'')===(m.data.messobjekt||'') && (o.data.zweck||'')===(m.data.zweck||''));
+    if(!o){
+      o = {id:uid(), tid:m.tid, created:m.created||Date.now(), updated:Date.now(), data:{}};
+      OBJEKT_KEYS.forEach(k=>{ if(m.data[k]) o.data[k]=m.data[k]; });
+      objekte.push(o); await put('objekte',o);
+    }
+    m.oid = o.id; await put('messungen',m);
+  }
+}
+const objekteOf = tid => objekte.filter(o=>o.tid===tid);
+const messungenOfT = tid => messungen.filter(m=>m.tid===tid);
+const messungenOfO = oid => messungen.filter(m=>m.oid===oid);
+// Nummern laufen pro Messtermin durch (über alle Messobjekte), damit sie im ZIP eindeutig sind
+function nextNumber(tid){
+  let max=0, width=2;
+  for(const m of messungenOfT(tid)){ const n=parseInt(m.data.nummer,10); if(!isNaN(n) && n>max){ max=n; width=Math.max(2,String(m.data.nummer).trim().length); } }
   return String(max+1).padStart(width,'0');
 }
-function missing(d){ return REQUIRED.filter(k=>!String(d[k]||'').trim()); }
+const missing = (d, req) => req.filter(k=>!String(d[k]||'').trim());
 function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(saveCur,300); }
-async function saveCur(){ clearTimeout(saveTimer); if(!cur) return; cur.updated=Date.now(); await put('messungen',cur); }
-
-/* ---------- Startseite ---------- */
-async function showHome(){
-  await saveCur(); cur=null;
-  await refresh();
-  const items = list.map(m=>{
-    const d=m.data, miss=missing(d).length;
-    const on = selected.has(m.id);
-    return `<li class="item">
-      ${selectMode?`<button class="check ${on?'on':''}" data-sel="${m.id}" aria-label="Auswählen">${on?'✓':''}</button>`:''}
-      <button class="open" data-open="${m.id}">
-        <span class="num">${esc(d.nummer||'–')}</span>
-        <span class="main"><span class="title">${esc(d.messobjekt||'Ohne Messobjekt')}</span>
-        <span class="meta">${esc(fmtDate(d.datum))} ${esc(d.uhrzeit||'')} ${d.erregung?'<br>'+esc(d.erregung):''}</span></span>
-        <span class="tag ${miss?'':'done'}">${miss?'Entwurf':'Fertig'}</span>
-      </button></li>`;
-  }).join('');
-  $('#app').innerHTML = `<div class="wrap">
-    <div class="bar"><h1>Messberichte</h1>
-      ${list.length?`<button class="icon-btn" id="selBtn">${selectMode?'Fertig':'Auswählen'}</button>`:''}
-      <button class="icon-btn" id="setBtn" aria-label="Einstellungen" style="font-size:24px">⚙︎</button></div>
-    ${selectMode?'':`<button class="btn primary" id="newBtn">Neue Messung</button>`}
-    ${list.length?`<ul class="list">${items}</ul>`:`<div class="empty">Noch keine Messungen.<br>Starte die erste mit „Neue Messung“.</div>`}
-  </div>
-  ${selectMode?`<div class="nav"><div class="inner">
-    <button class="btn" id="allBtn">${selected.size===list.length?'Keine':'Alle'}</button>
-    <button class="btn primary" id="zipBtn" ${selected.size?'':'disabled'}>${selected.size} als ZIP speichern</button></div></div>`:''}`;
-  $('#newBtn') && ($('#newBtn').onclick = ()=>newMessung());
-  $('#setBtn').onclick = showSettings;
-  $('#selBtn') && ($('#selBtn').onclick = ()=>{ selectMode=!selectMode; selected.clear(); showHome(); });
-  $('#allBtn') && ($('#allBtn').onclick = ()=>{ if(selected.size===list.length) selected.clear(); else list.forEach(m=>selected.add(m.id)); showHome(); });
-  $('#zipBtn') && ($('#zipBtn').onclick = ()=>exportZip(list.filter(m=>selected.has(m.id))));
-  document.querySelectorAll('[data-sel]').forEach(b=>b.onclick=()=>{ const id=b.dataset.sel; selected.has(id)?selected.delete(id):selected.add(id); showHome(); });
-  document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{
-    if(selectMode){ const id=b.dataset.open; selected.has(id)?selected.delete(id):selected.add(id); showHome(); return; }
-    cur = list.find(m=>m.id===b.dataset.open); showReview();
-  });
-  window.scrollTo(0,0);
-}
-
-async function newMessung(base){
-  await refresh();
-  const d = { nummer: nextNumber(), datum: today(), uhrzeit: nowTime(),
-    firma: settings.firma, messleiter: settings.messleiter, geraetetyp: settings.geraetetyp, aafilter: settings.aafilter, abtastrate: settings.abtastrate };
-  if(base){ // Folgemessung: Rahmendaten übernehmen
-    ['windgeschwindigkeit','windrichtung','temperatur','firma','messleiter','zweck','messobjekt','geraetetyp','aafilter','abtastrate','messdauer','sensorstandort'].forEach(k=>{ if(base.data[k]) d[k]=base.data[k]; });
-  }
-  cur = { id: uid(), created: Date.now(), updated: Date.now(), data: d };
-  await put('messungen', cur);
-  step = 0; showStep();
-}
-
-/* ---------- Abfrage ---------- */
-function recentValues(k){
-  const seen=[]; for(const m of list){ const v=String(m.data[k]||'').trim(); if(v && !seen.includes(v) && m.id!==cur.id) seen.push(v); if(seen.length>=4) break; } return seen;
-}
-function fieldHTML(f, single){
-  const v = cur.data[f.k]==null?'':cur.data[f.k];
-  const id = 'f_'+f.k;
-  let h = `<div class="field">${(!single && f.label)?`<label for="${id}">${esc(f.label)}</label>`:''}`;
-  if(f.type==='compass'){
-    h += `<div class="compass">${COMPASS.map(([s,l])=>{ const val = s==='–'?'windstill':`${l} (${s})`; return `<button class="chip ${v===val?'on':''}" data-set="${f.k}" data-val="${esc(val)}">${s==='–'?'still':s}</button>`; }).join('')}</div>
-      <input class="inp" id="${id}" data-k="${f.k}" value="${esc(v)}" placeholder="oder frei eingeben, z. B. drehend" enterkeyhint="next">`;
-  } else if(f.type==='textarea'){
-    h += `<textarea class="inp" id="${id}" data-k="${f.k}" placeholder="${esc(f.ph||'')}">${esc(v)}</textarea>`;
-  } else {
-    const t = f.type==='date'?'date':f.type==='time'?'time':'text';
-    h += `<input class="inp" id="${id}" type="${t}" data-k="${f.k}" value="${esc(v)}" placeholder="${esc(f.ph||'')}" ${f.mode?`inputmode="${f.mode}"`:''} enterkeyhint="next" autocomplete="off">`;
-  }
-  if(f.chips){
-    const parts = String(v).split(',').map(s=>s.trim());
-    h += `<div class="chips">${f.chips.map(c=>`<button class="chip ${(f.toggle?parts.includes(c):v===c)?'on':''}" data-${f.toggle?'tog':'set'}="${f.k}" data-val="${esc(c)}">${esc(c)}</button>`).join('')}</div>`;
-  }
-  if(f.recent){
-    const r = recentValues(f.k).filter(x=>x!==v);
-    if(r.length) h += `<div class="recent">Zuletzt verwendet</div><div class="chips">${r.map(c=>`<button class="chip" data-set="${f.k}" data-val="${esc(c)}">${esc(c.length>40?c.slice(0,40)+'…':c)}</button>`).join('')}</div>`;
-  }
-  return h+'</div>';
-}
-
-async function showStep(){
-  const s = STEPS[step];
-  const pct = Math.round((step)/(STEPS.length)*100);
-  const tape = `<div class="tape"><div class="fill" style="width:${pct}%"></div><div class="ticks">${STEPS.map((x,i)=>`<button data-go="${i}" aria-label="Schritt ${i+1}: ${esc(x.q)}"></button>`).join('')}</div></div>`;
-  let body;
-  if(s.images){
-    const imgs = await imgsOf(cur.id);
-    body = `<p class="muted small">Skizze mit x-/y-Richtung, Untergrund und Abständen zu aufgehenden Bauteilen. Alles hier landet auf Seite 2 des Berichts.</p>
-      <div class="row"><button class="btn steel" id="drawBtn">Skizze zeichnen</button><button class="btn steel" id="camBtn">Foto aufnehmen</button></div>
-      <button class="btn" id="libBtn" style="margin-top:10px">Aus Mediathek wählen</button>
-      <div class="thumbs">${imgs.map((im,i)=>`<div class="thumb"><img data-img="${im.id}" alt="Bild ${i+1}">
-        <div class="row"><input class="inp" data-cap="${im.id}" value="${esc(im.caption||'')}" placeholder="Bildunterschrift"><button class="icon-btn" style="flex:0;color:var(--danger)" data-delimg="${im.id}" aria-label="Bild löschen">✕</button></div></div>`).join('')}</div>`;
-  } else {
-    body = s.fields.map(f=>fieldHTML(f, s.fields.length===1)).join('') + (s.now?`<button class="btn" id="nowBtn">Jetzt übernehmen</button>`:'');
-  }
-  const last = step===STEPS.length-1;
-  $('#app').innerHTML = `<div class="wrap">
-    <div class="bar"><button class="icon-btn" id="homeBtn">Liste</button><h2>Messung ${esc(cur.data.nummer||'')}</h2><button class="icon-btn" id="revBtn">Übersicht</button></div>
-    ${tape}
-    <p class="sec">${esc(s.sec)}, Schritt ${step+1} von ${STEPS.length}</p>
-    <h1 class="q">${esc(s.q)}</h1>
-    ${body}
-  </div>
-  <div class="nav"><div class="inner">
-    <button class="btn back" id="backBtn" ${step===0?'disabled':''}>Zurück</button>
-    <button class="btn primary" id="nextBtn">${last?'Zur Übersicht':'Weiter'}</button></div></div>`;
-  bindStep(s);
-  window.scrollTo(0,0);
-  if(!s.images){ const first = document.querySelector('.inp'); if(first && !('ontouchstart' in window)) first.focus(); }
-}
-
-function bindStep(s){
-  $('#homeBtn').onclick = showHome;
-  $('#revBtn').onclick = async()=>{ await saveCur(); showReview(); };
-  $('#backBtn').onclick = ()=>{ if(step>0){ step--; saveCur(); showStep(); } };
-  $('#nextBtn').onclick = ()=>{ saveCur(); if(step<STEPS.length-1){ step++; showStep(); } else showReview(); };
-  document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{ step=+b.dataset.go; saveCur(); showStep(); });
-  document.querySelectorAll('.inp[data-k]').forEach(el=>{
-    el.oninput = ()=>{ cur.data[el.dataset.k]=el.value; scheduleSave(); syncChips(el.dataset.k); };
-    if(el.tagName==='INPUT') el.onkeydown = e=>{ if(e.key==='Enter'){ e.preventDefault(); const all=[...document.querySelectorAll('.inp[data-k]')]; const i=all.indexOf(el); if(i<all.length-1) all[i+1].focus(); else $('#nextBtn').click(); } };
-  });
-  document.querySelectorAll('[data-set]').forEach(b=>b.onclick=()=>{ const k=b.dataset.set; const val=b.dataset.val; cur.data[k] = cur.data[k]===val && b.classList.contains('on') ? '' : val; const inp=document.querySelector(`.inp[data-k="${k}"]`); if(inp) inp.value=cur.data[k]; scheduleSave(); syncChips(k); });
-  document.querySelectorAll('[data-tog]').forEach(b=>b.onclick=()=>{ const k=b.dataset.tog; let parts=String(cur.data[k]||'').split(',').map(x=>x.trim()).filter(Boolean); const val=b.dataset.val; parts = parts.includes(val)?parts.filter(x=>x!==val):parts.concat(val); cur.data[k]=parts.join(', '); const inp=document.querySelector(`.inp[data-k="${k}"]`); if(inp) inp.value=cur.data[k]; scheduleSave(); syncChips(k); });
-  $('#nowBtn') && ($('#nowBtn').onclick = ()=>{ cur.data.datum=today(); cur.data.uhrzeit=nowTime(); scheduleSave(); showStep(); });
-  if(s.images){
-    $('#drawBtn').onclick = ()=>openDraw();
-    $('#camBtn').onclick = ()=>$('#camIn').click();
-    $('#libBtn').onclick = ()=>$('#libIn').click();
-    document.querySelectorAll('[data-img]').forEach(async im=>{ const rec=(await imgsOf(cur.id)).find(x=>x.id===im.dataset.img); if(rec){ im.src=URL.createObjectURL(rec.blob); } });
-    document.querySelectorAll('[data-cap]').forEach(inp=>inp.oninput=async()=>{ const rec=(await imgsOf(cur.id)).find(x=>x.id===inp.dataset.cap); if(rec){ rec.caption=inp.value; await put('bilder',rec); } });
-    document.querySelectorAll('[data-delimg]').forEach(b=>b.onclick=async()=>{ if(confirm('Bild löschen?')){ await del('bilder',b.dataset.delimg); showStep(); } });
-  }
-}
-function syncChips(k){
-  const v = String(cur.data[k]||''); const parts=v.split(',').map(s=>s.trim());
-  document.querySelectorAll(`[data-set="${k}"]`).forEach(b=>b.classList.toggle('on', v===b.dataset.val));
-  document.querySelectorAll(`[data-tog="${k}"]`).forEach(b=>b.classList.toggle('on', parts.includes(b.dataset.val)));
-}
-
+async function saveCur(){ clearTimeout(saveTimer); if(!cur) return; cur.updated=Date.now(); await put(storeOf(kind),cur); }
+async function leave(){ await saveCur(); cur=null; }
+async function deleteMessung(m){ for(const im of await imgsOf(m.id)) await del('bilder',im.id); await del('messungen',m.id); }
 /* ---------- Bilder ---------- */
 function loadImage(blob){ return new Promise((res,rej)=>{ const u=URL.createObjectURL(blob); const i=new Image(); i.onload=()=>{ res(i); }; i.onerror=rej; i.src=u; }); }
 async function compress(blob, max=1800){
@@ -478,40 +417,287 @@ function openDraw(){
   requestAnimationFrame(size);
 }
 
-/* ---------- Übersicht ---------- */
-async function showReview(){
-  const d=cur.data, miss=missing(d), imgs=await imgsOf(cur.id);
-  const labels = {}; STEPS.forEach((s,i)=>!s.images && s.fields.forEach(f=>labels[f.k]={l:f.label||s.q, i, sec:s.sec}));
-  let html='', lastSec='';
-  for(const k in labels){
-    const L=labels[k]; if(L.sec!==lastSec){ html+=`<h3>${esc(L.sec)}</h3>`; lastSec=L.sec; }
-    let v=d[k]||''; if(k==='datum') v=fmtDate(v); if(k==='temperatur' && /^[-+−]?\d+([.,]\d+)?$/.test(String(v).trim())) v=String(v).trim()+' °C';
-    const req=REQUIRED.includes(k);
-    html += `<button class="rv" data-go="${L.i}"><span class="k">${esc(L.l)}</span><span class="v ${!v&&req?'missing':''}">${v?esc(v):(req?'fehlt noch':'–')}</span></button>`;
-  }
-  html += `<h3>Skizze</h3><button class="rv" data-go="${STEPS.length-1}"><span class="k">Bilder</span><span class="v">${imgs.length?imgs.length+' Bild'+(imgs.length>1?'er':''):'–'}</span></button>`;
+
+/* ---------- Startseite: Messtermine ---------- */
+async function showHome(){
+  await leave(); termin=null; objekt=null; selectMode=false; selected.clear();
+  await refresh();
+  const items = termine.map(t=>{
+    const os = objekteOf(t.id), n = messungenOfT(t.id).length;
+    const namen = os.map(o=>o.data.messobjekt).filter(Boolean).join(', ');
+    return `<li class="item"><button class="open" data-termin="${t.id}">
+        <span class="main"><span class="title">${esc(t.data.datum?fmtDate(t.data.datum):'Ohne Datum')}</span>
+        <span class="meta">${esc(namen||'Noch kein Messobjekt')}</span></span>
+        <span class="tag">${n} Messung${n===1?'':'en'}</span></button></li>`;
+  }).join('');
+  $('#app').innerHTML = `<div class="wrap">
+    <div class="bar"><h1>Messtermine</h1><button class="icon-btn" id="setBtn" aria-label="Einstellungen" style="font-size:24px">⚙︎</button></div>
+    <button class="btn primary" id="newBtn">Neuer Messtermin</button>
+    ${termine.length?`<ul class="list">${items}</ul>`:`<div class="empty">Noch keine Messtermine.<br>Leg den ersten mit „Neuer Messtermin“ an.</div>`}
+  </div>`;
+  $('#newBtn').onclick = newTermin;
+  $('#setBtn').onclick = showSettings;
+  document.querySelectorAll('[data-termin]').forEach(b=>b.onclick=()=>{ termin=termine.find(t=>t.id===b.dataset.termin); showTermin(); });
+  window.scrollTo(0,0);
+}
+
+async function newTermin(){
+  termin = { id:uid(), created:Date.now(), updated:Date.now(), data:{ datum: today(), firma: settings.firma, messleiter: settings.messleiter } };
+  await put('termine', termin);
+  cur = termin; kind='termin'; step=0; showStep();
+}
+
+/* ---------- Messtermin: Rahmendaten + Messobjekte ---------- */
+async function showTermin(){
+  await leave(); objekt=null; selectMode=false; selected.clear();
+  await refresh();
+  termin = termine.find(t=>t.id===termin.id);
+  if(!termin) return showHome();
+  const t=termin.data, os=objekteOf(termin.id), alle=messungenOfT(termin.id);
+  const rows = [
+    ['Datum', fmtDate(t.datum), 0], ['Windgeschwindigkeit', t.windgeschwindigkeit, 1], ['Windrichtung', t.windrichtung, 1],
+    ['Temperatur', fmtTemp(t.temperatur), 2], ['Firma', t.firma, 3], ['Messleiter', t.messleiter, 4], ['Messsysteme', t.systeme, 5]
+  ].map(([l,v,i])=>`<button class="rv" data-tstep="${i}"><span class="k">${l}</span><span class="v">${v?esc(v):'–'}</span></button>`).join('');
+  const items = os.map(o=>{
+    const n=messungenOfO(o.id).length;
+    return `<li class="item"><button class="open" data-obj="${o.id}">
+        <span class="main"><span class="title">${esc(o.data.messobjekt||'Ohne Namen')}</span>
+        <span class="meta">${esc(o.data.zweck||'Zweck fehlt noch')}</span></span>
+        <span class="tag">${n} Messung${n===1?'':'en'}</span></button></li>`;
+  }).join('');
   $('#app').innerHTML = `<div class="wrap review">
-    <div class="bar"><button class="icon-btn" id="homeBtn">Liste</button><h2>Messung ${esc(d.nummer||'')}</h2><button class="icon-btn" id="moreBtn">Mehr</button></div>
+    <div class="bar"><button class="icon-btn" id="upBtn">Termine</button><h2>${esc(fmtDate(t.datum)||'Messtermin')}</h2><button class="icon-btn" id="moreBtn">Mehr</button></div>
+    <h3>Messtermin</h3>${rows}
+    <h3 style="margin-top:26px">Messobjekte</h3>
+    ${os.length?`<ul class="list" style="margin-top:4px">${items}</ul>`:`<div class="empty">Noch kein Messobjekt in diesem Termin.</div>`}
+  </div>
+  <div class="nav"><div class="inner"><button class="btn primary" id="newOBtn">Neues Messobjekt</button></div></div>`;
+  $('#upBtn').onclick = showHome;
+  $('#newOBtn').onclick = newObjekt;
+  document.querySelectorAll('[data-tstep]').forEach(b=>b.onclick=()=>{ cur=termin; kind='termin'; step=+b.dataset.tstep; showStep(); });
+  document.querySelectorAll('[data-obj]').forEach(b=>b.onclick=()=>{ objekt=os.find(o=>o.id===b.dataset.obj); showObjekt(); });
+  $('#moreBtn').onclick = ()=>sheet(`<h3>Messtermin ${esc(fmtDate(t.datum))}</h3>
+      ${alle.length?`<button class="btn" data-x="zip">Alle ${alle.length} Berichte als ZIP</button>`:''}
+      <button class="btn danger" data-x="del">Messtermin löschen</button>
+      <button class="btn" data-x="close">Schließen</button>`, async (x,close)=>{
+        if(x==='zip'){ close(); exportZip(alle); }
+        if(x==='del'){ if(confirm('Messtermin mit '+os.length+' Messobjekten und '+alle.length+' Messungen löschen?')){
+          for(const m of alle) await deleteMessung(m);
+          for(const o of os) await del('objekte',o.id);
+          await del('termine',termin.id); close(); showHome(); } }
+        if(x==='close') close();
+      });
+  window.scrollTo(0,0);
+}
+
+async function newObjekt(){
+  objekt = { id:uid(), tid:termin.id, created:Date.now(), updated:Date.now(), data:{} };
+  await put('objekte', objekt);
+  cur = objekt; kind='objekt'; step=0; showStep();
+}
+
+/* ---------- Messobjekt: Angaben + Messungen ---------- */
+async function showObjekt(){
+  await leave(); await refresh();
+  objekt = objekte.find(o=>o.id===objekt.id);
+  if(!objekt) return showTermin();
+  termin = termine.find(t=>t.id===objekt.tid);
+  const o=objekt.data, ms=messungenOfO(objekt.id);
+  const rows = [['Messobjekt', o.messobjekt, 0], ['Zweck der Messung', o.zweck, 1]]
+    .map(([l,v,i])=>`<button class="rv" data-ostep="${i}"><span class="k">${l}</span><span class="v ${v?'':'missing'}">${v?esc(v):'fehlt noch'}</span></button>`).join('');
+  const items = ms.map(m=>{
+    const d=m.data, miss=missing(d,REQUIRED_M).length, on=selected.has(m.id);
+    return `<li class="item">
+      ${selectMode?`<button class="check ${on?'on':''}" data-sel="${m.id}" aria-label="Auswählen">${on?'✓':''}</button>`:''}
+      <button class="open" data-open="${m.id}">
+        <span class="num">${esc(d.nummer||'–')}</span>
+        <span class="main"><span class="title">${esc(d.erregung||'Erregung fehlt noch')}</span>
+        <span class="meta">${esc(d.uhrzeit||'')} Uhr${d.messdauer?', '+esc(d.messdauer):''}</span></span>
+        <span class="tag ${miss?'':'done'}">${miss?'Entwurf':'Fertig'}</span>
+      </button></li>`;
+  }).join('');
+  $('#app').innerHTML = `<div class="wrap review">
+    <div class="bar"><button class="icon-btn" id="upBtn">Termin</button><h2>${esc(o.messobjekt||'Messobjekt')}</h2><button class="icon-btn" id="moreBtn">Mehr</button></div>
+    <h3>Messobjekt</h3>${rows}
+    <div class="bar" style="margin-top:22px"><h3 style="flex:1;margin:0">Messungen</h3>
+      ${ms.length?`<button class="icon-btn" id="selBtn">${selectMode?'Fertig':'Auswählen'}</button>`:''}</div>
+    ${ms.length?`<ul class="list" style="margin-top:4px">${items}</ul>`:`<div class="empty">Noch keine Messung an diesem Objekt.</div>`}
+  </div>
+  <div class="nav"><div class="inner">
+    ${selectMode
+      ? `<button class="btn" id="allBtn">${selected.size===ms.length?'Keine':'Alle'}</button>
+         <button class="btn primary" id="zipBtn" ${selected.size?'':'disabled'}>${selected.size} als ZIP speichern</button>`
+      : `<button class="btn primary" id="newMBtn">Neue Messung</button>`}
+  </div></div>`;
+  $('#upBtn').onclick = ()=>{ selectMode=false; selected.clear(); showTermin(); };
+  document.querySelectorAll('[data-ostep]').forEach(b=>b.onclick=()=>{ cur=objekt; kind='objekt'; step=+b.dataset.ostep; showStep(); });
+  $('#newMBtn') && ($('#newMBtn').onclick = newMessung);
+  $('#selBtn') && ($('#selBtn').onclick = ()=>{ selectMode=!selectMode; selected.clear(); showObjekt(); });
+  $('#allBtn') && ($('#allBtn').onclick = ()=>{ if(selected.size===ms.length) selected.clear(); else ms.forEach(m=>selected.add(m.id)); showObjekt(); });
+  $('#zipBtn') && ($('#zipBtn').onclick = ()=>exportZip(ms.filter(m=>selected.has(m.id))));
+  document.querySelectorAll('[data-sel]').forEach(b=>b.onclick=()=>{ const id=b.dataset.sel; selected.has(id)?selected.delete(id):selected.add(id); showObjekt(); });
+  document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{
+    const id=b.dataset.open;
+    if(selectMode){ selected.has(id)?selected.delete(id):selected.add(id); showObjekt(); return; }
+    cur=ms.find(m=>m.id===id); kind='messung'; showReview();
+  });
+  $('#moreBtn').onclick = ()=>sheet(`<h3>${esc(o.messobjekt||'Messobjekt')}</h3>
+      ${ms.length?`<button class="btn" data-x="zip">Alle ${ms.length} Berichte als ZIP</button>`:''}
+      <button class="btn danger" data-x="del">Messobjekt löschen</button>
+      <button class="btn" data-x="close">Schließen</button>`, async (x,close)=>{
+        if(x==='zip'){ close(); exportZip(ms); }
+        if(x==='del'){ if(confirm('Messobjekt mit allen '+ms.length+' Messungen löschen?')){
+          for(const m of ms) await deleteMessung(m);
+          await del('objekte',objekt.id); close(); showTermin(); } }
+        if(x==='close') close();
+      });
+  window.scrollTo(0,0);
+}
+
+async function newMessung(){
+  await refresh();
+  const prev = messungenOfO(objekt.id).slice().sort((a,b)=>(b.created||0)-(a.created||0))[0];
+  const d = { nummer: nextNumber(objekt.tid), uhrzeit: nowTime() };
+  if(prev) CARRY_OVER.forEach(k=>{ if(prev.data[k]) d[k]=prev.data[k]; });
+  cur = { id:uid(), tid:objekt.tid, oid:objekt.id, created:Date.now(), updated:Date.now(), data:d };
+  await put('messungen', cur);
+  kind='messung'; step=0; showStep();
+}
+
+/* ---------- Übersicht einer Messung ---------- */
+async function showReview(){
+  const d=cur.data, t=termin.data, o=objekt.data, miss=missing(d,REQUIRED_M), imgs=await imgsOf(cur.id);
+  let html = `<h3>Messtermin</h3>
+    <button class="rv" data-up="t"><span class="k">Datum</span><span class="v">${esc(fmtDate(t.datum))||'–'}</span></button>
+    <button class="rv" data-up="t"><span class="k">Witterung</span><span class="v">${esc([t.windgeschwindigkeit,t.windrichtung,fmtTemp(t.temperatur)].filter(Boolean).join(', '))||'–'}</span></button>
+    <button class="rv" data-up="t"><span class="k">Firma, Messleiter</span><span class="v">${esc([t.firma,t.messleiter].filter(Boolean).join(', '))||'–'}</span></button>
+    <button class="rv" data-up="t"><span class="k">Messsysteme</span><span class="v">${esc(t.systeme)||'–'}</span></button>
+    <h3>Messobjekt</h3>
+    <button class="rv" data-up="o"><span class="k">Messobjekt</span><span class="v">${esc(o.messobjekt)||'–'}</span></button>
+    <button class="rv" data-up="o"><span class="k">Zweck der Messung</span><span class="v">${esc(o.zweck)||'–'}</span></button>
+    <h3>Messung</h3>
+    <div class="rv"><span class="k">Nummer</span><span class="v">${esc(d.nummer)}</span></div>
+    <div class="rv"><span class="k">Uhrzeit</span><span class="v">${esc(d.uhrzeit)} Uhr</span></div>`;
+  let lastSec='Messung';
+  MESSUNG_STEPS.forEach((s,i)=>{ if(s.images) return; s.fields.forEach(f=>{
+    if(s.sec!==lastSec){ html+=`<h3>${esc(s.sec)}</h3>`; lastSec=s.sec; }
+    const v=d[f.k]||'', req=REQUIRED_M.includes(f.k);
+    html += `<button class="rv" data-go="${i}"><span class="k">${esc(f.label||s.q)}</span><span class="v ${!v&&req?'missing':''}">${v?esc(v):(req?'fehlt noch':'–')}</span></button>`;
+  }); });
+  html += `<h3>Skizze</h3><button class="rv" data-go="${MESSUNG_STEPS.length-1}"><span class="k">Bilder</span><span class="v">${imgs.length?imgs.length+' Bild'+(imgs.length>1?'er':''):'–'}</span></button>`;
+  $('#app').innerHTML = `<div class="wrap review">
+    <div class="bar"><button class="icon-btn" id="upBtn">Objekt</button><h2>Messung ${esc(d.nummer||'')}</h2><button class="icon-btn" id="moreBtn">Mehr</button></div>
     ${miss.length?`<p class="small" style="color:var(--danger)">${miss.length} Pflichtangabe${miss.length>1?'n':''} offen. Tippe auf eine Zeile, um sie zu ergänzen.</p>`:''}
     ${html}
   </div>
   <div class="nav"><div class="inner">
     <button class="btn back" id="editBtn">Abfrage</button>
     <button class="btn primary" id="docBtn">Bericht erstellen</button></div></div>`;
-  $('#homeBtn').onclick=showHome;
+  $('#upBtn').onclick=showObjekt;
   $('#editBtn').onclick=()=>{ step=0; showStep(); };
   $('#docBtn').onclick=()=>exportSingle(cur);
+  document.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=> b.dataset.up==='t' ? showTermin() : showObjekt());
+  document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{ step=+b.dataset.go; showStep(); });
   $('#moreBtn').onclick=()=>sheet(`<h3>Messung ${esc(d.nummer||'')}</h3>
-      <button class="btn" data-x="follow">Folgemessung anlegen</button>
-      <p class="small muted" style="margin:0">Übernimmt Witterung, Messobjekt, Zweck, Geräte und Standort. Nummer und Uhrzeit werden neu gesetzt.</p>
       <button class="btn danger" data-x="del">Messung löschen</button>
       <button class="btn" data-x="close">Schließen</button>`, async (x,close)=>{
-        if(x==='follow'){ close(); newMessung(cur); }
-        if(x==='del'){ if(confirm('Messung '+(d.nummer||'')+' mit allen Bildern löschen?')){ for(const im of imgs) await del('bilder',im.id); await del('messungen',cur.id); cur=null; close(); showHome(); } }
+        if(x==='del'){ if(confirm('Messung '+(d.nummer||'')+' mit allen Bildern löschen?')){ await deleteMessung(cur); cur=null; close(); showObjekt(); } }
         if(x==='close') close();
       });
-  document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{ step=+b.dataset.go; showStep(); });
   window.scrollTo(0,0);
+}
+/* ---------- Abfrage (für Termin, Messobjekt und Messung) ---------- */
+function recentValues(k){
+  const pool = ({termin:termine, objekt:objekte, messung:messungen})[kind];
+  const seen=[]; for(const m of pool.slice().sort((a,b)=>(b.updated||0)-(a.updated||0))){ const v=String(m.data[k]||'').trim(); if(v && !seen.includes(v) && m.id!==cur.id) seen.push(v); if(seen.length>=4) break; } return seen;
+}
+function fieldHTML(f, single){
+  const v = cur.data[f.k]==null?'':cur.data[f.k];
+  const id = 'f_'+f.k;
+  let h = `<div class="field">${(!single && f.label)?`<label for="${id}">${esc(f.label)}</label>`:''}`;
+  if(f.type==='compass'){
+    h += `<div class="compass">${COMPASS.map(([s,l])=>{ const val = s==='–'?'windstill':`${l} (${s})`; return `<button class="chip ${v===val?'on':''}" data-set="${f.k}" data-val="${esc(val)}">${s==='–'?'still':s}</button>`; }).join('')}</div>
+      <input class="inp" id="${id}" data-k="${f.k}" value="${esc(v)}" placeholder="oder frei eingeben, z. B. drehend" enterkeyhint="next">`;
+  } else if(f.type==='textarea'){
+    h += `<textarea class="inp" id="${id}" data-k="${f.k}" placeholder="${esc(f.ph||'')}">${esc(v)}</textarea>`;
+  } else {
+    const t = f.type==='date'?'date':f.type==='time'?'time':'text';
+    h += `<input class="inp" id="${id}" type="${t}" data-k="${f.k}" value="${esc(v)}" placeholder="${esc(f.ph||'')}" ${f.mode?`inputmode="${f.mode}"`:''} enterkeyhint="next" autocomplete="off">`;
+  }
+  if(f.chips){
+    const parts = String(v).split(',').map(s=>s.trim());
+    h += `<div class="chips">${f.chips.map(c=>`<button class="chip ${(f.toggle?parts.includes(c):v===c)?'on':''}" data-${f.toggle?'tog':'set'}="${f.k}" data-val="${esc(c)}">${esc(c)}</button>`).join('')}</div>`;
+  }
+  if(f.recent){
+    const r = recentValues(f.k).filter(x=>x!==v);
+    if(r.length) h += `<div class="recent">Zuletzt verwendet</div><div class="chips">${r.map(c=>`<button class="chip" data-set="${f.k}" data-val="${esc(c)}">${esc(c.length>40?c.slice(0,40)+'…':c)}</button>`).join('')}</div>`;
+  }
+  return h+'</div>';
+}
+
+async function showStep(){
+  const STEPS = stepsOf(kind), s = STEPS[step];
+  const pct = Math.round(step/STEPS.length*100);
+  const tape = `<div class="tape"><div class="fill" style="width:${pct}%"></div><div class="ticks">${STEPS.map((x,i)=>`<button data-go="${i}" aria-label="Schritt ${i+1}: ${esc(x.q)}"></button>`).join('')}</div></div>`;
+  let body;
+  if(s.images){
+    const imgs = await imgsOf(cur.id);
+    body = `<p class="muted small">Skizze mit x-/y-Richtung, Untergrund und Abständen zu aufgehenden Bauteilen. Alles hier landet auf Seite 2 des Berichts.</p>
+      <div class="row"><button class="btn steel" id="drawBtn">Skizze zeichnen</button><button class="btn steel" id="camBtn">Foto aufnehmen</button></div>
+      <button class="btn" id="libBtn" style="margin-top:10px">Aus Mediathek wählen</button>
+      <div class="thumbs">${imgs.map((im,i)=>`<div class="thumb"><img data-img="${im.id}" alt="Bild ${i+1}">
+        <div class="row"><input class="inp" data-cap="${im.id}" value="${esc(im.caption||'')}" placeholder="Bildunterschrift"><button class="icon-btn" style="flex:0;color:var(--danger)" data-delimg="${im.id}" aria-label="Bild löschen">✕</button></div></div>`).join('')}</div>`;
+  } else {
+    body = s.fields.map(f=>fieldHTML(f, s.fields.length===1)).join('')
+      + (s.now?`<button class="btn" id="nowBtn">Uhrzeit jetzt</button>`:'')
+      + (s.today?`<button class="btn" id="todayBtn">Heute</button>`:'');
+  }
+  const last = step===STEPS.length-1;
+  const title = kind==='termin' ? 'Messtermin' : kind==='objekt' ? 'Messobjekt' : 'Messung '+(cur.data.nummer||'');
+  $('#app').innerHTML = `<div class="wrap">
+    <div class="bar"><button class="icon-btn" id="upBtn">${({termin:'Termine', objekt:'Termin', messung:'Objekt'})[kind]}</button><h2>${esc(title)}</h2><button class="icon-btn" id="revBtn">Übersicht</button></div>
+    ${tape}
+    <p class="sec">${esc(s.sec)}, Schritt ${step+1} von ${STEPS.length}</p>
+    <h1 class="q">${esc(s.q)}</h1>
+    ${body}
+  </div>
+  <div class="nav"><div class="inner">
+    <button class="btn back" id="backBtn" ${step===0?'disabled':''}>Zurück</button>
+    <button class="btn primary" id="nextBtn">${last?({termin:'Termin fertig', objekt:'Objekt fertig', messung:'Zur Übersicht'})[kind]:'Weiter'}</button></div></div>`;
+  bindStep(s);
+  window.scrollTo(0,0);
+  if(!s.images){ const first=document.querySelector('.inp'); if(first && !('ontouchstart' in window)) first.focus(); }
+}
+function finishWizard(){ saveCur().then(()=> kind==='termin' ? showTermin() : kind==='objekt' ? showObjekt() : showReview()); }
+
+function bindStep(s){
+  const STEPS = stepsOf(kind);
+  $('#upBtn').onclick = ()=> kind==='termin' ? showHome() : kind==='objekt' ? showTermin() : showObjekt();
+  $('#revBtn').onclick = finishWizard;
+  $('#backBtn').onclick = ()=>{ if(step>0){ step--; saveCur(); showStep(); } };
+  $('#nextBtn').onclick = ()=>{ saveCur(); if(step<STEPS.length-1){ step++; showStep(); } else finishWizard(); };
+  document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{ step=+b.dataset.go; saveCur(); showStep(); });
+  document.querySelectorAll('.inp[data-k]').forEach(el=>{
+    el.oninput = ()=>{ cur.data[el.dataset.k]=el.value; scheduleSave(); syncChips(el.dataset.k); };
+    if(el.tagName==='INPUT') el.onkeydown = e=>{ if(e.key==='Enter'){ e.preventDefault(); const all=[...document.querySelectorAll('.inp[data-k]')]; const i=all.indexOf(el); if(i<all.length-1) all[i+1].focus(); else $('#nextBtn').click(); } };
+  });
+  document.querySelectorAll('[data-set]').forEach(b=>b.onclick=()=>{ const k=b.dataset.set, val=b.dataset.val; cur.data[k] = cur.data[k]===val && b.classList.contains('on') ? '' : val; const inp=document.querySelector(`.inp[data-k="${k}"]`); if(inp) inp.value=cur.data[k]; scheduleSave(); syncChips(k); });
+  document.querySelectorAll('[data-tog]').forEach(b=>b.onclick=()=>{ const k=b.dataset.tog, val=b.dataset.val; let parts=String(cur.data[k]||'').split(',').map(x=>x.trim()).filter(Boolean); parts = parts.includes(val)?parts.filter(x=>x!==val):parts.concat(val); cur.data[k]=parts.join(', '); const inp=document.querySelector(`.inp[data-k="${k}"]`); if(inp) inp.value=cur.data[k]; scheduleSave(); syncChips(k); });
+  $('#nowBtn') && ($('#nowBtn').onclick = ()=>{ cur.data.uhrzeit=nowTime(); scheduleSave(); showStep(); });
+  $('#todayBtn') && ($('#todayBtn').onclick = ()=>{ cur.data.datum=today(); scheduleSave(); showStep(); });
+  if(s.images){
+    $('#drawBtn').onclick = ()=>openDraw();
+    $('#camBtn').onclick = ()=>$('#camIn').click();
+    $('#libBtn').onclick = ()=>$('#libIn').click();
+    imgsOf(cur.id).then(list=>document.querySelectorAll('[data-img]').forEach(im=>{ const rec=list.find(x=>x.id===im.dataset.img); if(rec) im.src=URL.createObjectURL(rec.blob); }));
+    document.querySelectorAll('[data-cap]').forEach(inp=>inp.oninput=async()=>{ const rec=(await imgsOf(cur.id)).find(x=>x.id===inp.dataset.cap); if(rec){ rec.caption=inp.value; await put('bilder',rec); } });
+    document.querySelectorAll('[data-delimg]').forEach(b=>b.onclick=async()=>{ if(confirm('Bild löschen?')){ await del('bilder',b.dataset.delimg); showStep(); } });
+  }
+}
+function syncChips(k){
+  const v=String(cur.data[k]||''), parts=v.split(',').map(s=>s.trim());
+  document.querySelectorAll(`[data-set="${k}"]`).forEach(b=>b.classList.toggle('on', v===b.dataset.val));
+  document.querySelectorAll(`[data-tog="${k}"]`).forEach(b=>b.classList.toggle('on', parts.includes(b.dataset.val)));
 }
 
 function sheet(inner, onAction){
@@ -523,63 +709,85 @@ function sheet(inner, onAction){
   bg.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>onAction(b.dataset.x, close, b));
   return {el:bg, close};
 }
-
 /* ---------- Einstellungen ---------- */
 function showSettings(){
-  const f=[['firma','Firma'],['messleiter','Messleiter'],['geraetetyp','Gerätetyp'],['aafilter','Anti-Aliasing-Filter'],['abtastrate','Abtastrate']];
-  $('#app').innerHTML=`<div class="wrap">
-    <div class="bar"><button class="icon-btn" id="homeBtn">Liste</button><h2>Standardwerte</h2><span style="min-width:44px"></span></div>
-    <p class="muted small">Diese Angaben werden bei jeder neuen Messung vorausgefüllt und lassen sich dort einzeln ändern.</p>
-    ${f.map(([k,l])=>`<div class="field"><label for="s_${k}">${l}</label>${k==='geraetetyp'?`<textarea class="inp" id="s_${k}" data-s="${k}">${esc(settings[k])}</textarea>`:`<input class="inp" id="s_${k}" data-s="${k}" value="${esc(settings[k])}">`}</div>`).join('')}
+  const inp=(id,val,area)=> area?`<textarea class="inp" id="${id}">${esc(val)}</textarea>`:`<input class="inp" id="${id}" value="${esc(val)}">`;
+  $('#app').innerHTML=`<div class="wrap review">
+    <div class="bar"><button class="icon-btn" id="homeBtn">Termine</button><h2>Standardwerte</h2><span style="min-width:44px"></span></div>
+    <p class="muted small">Firma und Messleiter werden bei jedem neuen Messtermin vorausgefüllt. Die Gerätedaten der Messsysteme landen im Bericht unter „Messgeräte“, je nachdem, welche Systeme beim Termin ausgewählt sind.</p>
+    <h3>Institution</h3>
+    <div class="field"><label for="s_firma">Firma</label>${inp('s_firma',settings.firma)}</div>
+    <div class="field"><label for="s_messleiter">Messleiter</label>${inp('s_messleiter',settings.messleiter)}</div>
+    ${SYSTEME.map(x=>`<h3>${esc(x.name)}</h3>
+      <div class="field"><label for="s_${x.id}_g">Gerätetyp</label>${inp('s_'+x.id+'_g',settings.sys[x.id].geraetetyp,true)}</div>
+      <div class="field"><label for="s_${x.id}_a">Anti-Aliasing-Filter</label>${inp('s_'+x.id+'_a',settings.sys[x.id].aafilter)}</div>
+      <div class="field"><label for="s_${x.id}_r">Abtastrate</label>${inp('s_'+x.id+'_r',settings.sys[x.id].abtastrate)}</div>`).join('')}
     <button class="btn" id="resetBtn">Auf Vorlage zurücksetzen</button>
     <p class="muted small" style="margin-top:28px">Alle Messungen und Bilder liegen nur auf diesem Gerät. Fertige Berichte regelmäßig in der Dateien-App sichern.</p>
   </div>`;
   $('#homeBtn').onclick=showHome;
-  document.querySelectorAll('[data-s]').forEach(el=>el.oninput=()=>{ settings[el.dataset.s]=el.value; saveSettings(settings); });
-  $('#resetBtn').onclick=()=>{ if(confirm('Standardwerte auf die Vorlage zurücksetzen?')){ settings=Object.assign({},DEFAULTS); saveSettings(settings); showSettings(); } };
+  const bind=(id,fn)=>{ $('#'+id).oninput=e=>{ fn(e.target.value); saveSettings(settings); }; };
+  bind('s_firma',v=>settings.firma=v); bind('s_messleiter',v=>settings.messleiter=v);
+  SYSTEME.forEach(x=>{ bind('s_'+x.id+'_g',v=>settings.sys[x.id].geraetetyp=v); bind('s_'+x.id+'_a',v=>settings.sys[x.id].aafilter=v); bind('s_'+x.id+'_r',v=>settings.sys[x.id].abtastrate=v); });
+  $('#resetBtn').onclick=()=>{ if(confirm('Standardwerte auf die Vorlage zurücksetzen?')){ settings=freshSettings(); saveSettings(settings); showSettings(); } };
 }
+
 
 /* ---------- Bericht / Export ---------- */
 let TEMPLATE_BYTES;
 function lines(pairs, extra){ const out=pairs.filter(p=>String(p[1]||'').trim()).map(p=>p[0]+': '+String(p[1]).trim()); if(String(extra||'').trim()) out.push(String(extra).trim()); return out.join('\n'); }
-function reportFields(d){
-  let t=String(d.temperatur||'').trim(); if(/^[-+−]?\d+([.,]\d+)?$/.test(t)) t=t+' °C';
-  return { nummer:d.nummer, datum:fmtDate(d.datum), uhrzeit:d.uhrzeit, windgeschwindigkeit:d.windgeschwindigkeit, windrichtung:d.windrichtung, temperatur:t,
-    firma:d.firma, messleiter:d.messleiter, zweck:d.zweck, messobjekt:d.messobjekt, geraetetyp:d.geraetetyp, aafilter:d.aafilter, abtastrate:d.abtastrate,
+const terminOf = m => (termine.find(t=>t.id===m.tid)||{data:{}}).data;
+const objektOf = m => (objekte.find(o=>o.id===m.oid)||{data:{}}).data;
+function reportFields(m){
+  const d=m.data, t=terminOf(m), o=objektOf(m);
+  return { nummer:d.nummer, datum:fmtDate(t.datum), uhrzeit:d.uhrzeit,
+    windgeschwindigkeit:t.windgeschwindigkeit, windrichtung:t.windrichtung, temperatur:fmtTemp(t.temperatur),
+    firma:t.firma, messleiter:t.messleiter,
+    zweck:o.zweck, messobjekt:o.messobjekt, ...geraeteFelder(t,d),
     messdauer:d.messdauer, sensorstandort:d.sensorstandort, erregung:d.erregung,
     ergaenzungen: lines([['Personenanzahl',d.personen],['Gewicht, Impulshammer',d.gewicht]], d.ergaenzungen_sonst),
     notizen: lines([['Spürbarkeit',d.spuerbarkeit],['Sekundäreffekte',d.sekundaer]], d.notizen_sonst) };
 }
-function fileName(m){ const d=m.data; return (safeName(d.nummer)||'xx')+'-Messbericht'+(d.datum?'_'+d.datum:'')+(d.messobjekt?'_'+safeName(d.messobjekt):'')+'.docx'; }
+// Messgeräte aus den beim Termin gewählten Systemen zusammensetzen
+function geraeteFelder(t, d){
+  const gew = String(t.systeme||'').split(',').map(s=>s.trim()).filter(Boolean)
+    .map(n=>SYSTEME.find(x=>x.name===n)).filter(Boolean);
+  if(!gew.length) return {geraetetyp:d.geraetetyp, aafilter:d.aafilter, abtastrate:d.abtastrate}; // ältere Messungen
+  const mehr = gew.length>1;
+  const liste = k => gew.map(x=>[x.name, String(settings.sys[x.id][k]||'').trim()]).filter(p=>p[1])
+    .map(([n,v])=> mehr ? n+': '+v : v).join('\n');
+  return { geraetetyp: gew.map(x=>String(settings.sys[x.id].geraetetyp||x.name).trim()).join('\n'), aafilter: liste('aafilter'), abtastrate: liste('abtastrate') };
+}
+function fileName(m){ const d=m.data, t=terminOf(m), o=objektOf(m); return (safeName(d.nummer)||'xx')+'-Messbericht'+(t.datum?'_'+t.datum:'')+(o.messobjekt?'_'+safeName(o.messobjekt):'')+'.docx'; }
 async function buildDocx(m){
   if(!TEMPLATE_BYTES) TEMPLATE_BYTES=b64ToBytes(TEMPLATE_B64);
-  const imgs = await imgsOf(m.id);
-  const images = [];
-  for(const im of imgs) images.push({bytes:new Uint8Array(await im.blob.arrayBuffer()), width:im.w, height:im.h, caption:im.caption});
-  const zip = await buildReportDocx(JSZip, TEMPLATE_BYTES, reportFields(m.data), images);
+  const images=[];
+  for(const im of await imgsOf(m.id)) images.push({bytes:new Uint8Array(await im.blob.arrayBuffer()), width:im.w, height:im.h, caption:im.caption});
+  const zip = await buildReportDocx(JSZip, TEMPLATE_BYTES, reportFields(m), images);
   return zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document', compression:'DEFLATE'});
 }
 async function exportSingle(m){
   await saveCur();
-  const miss=missing(m.data);
+  const miss=missing(m.data,REQUIRED_M);
   if(miss.length && !confirm(miss.length+' Pflichtangabe(n) fehlen noch. Bericht trotzdem erstellen?')) return;
   const s=sheet(`<h3>Bericht wird erstellt …</h3>`,()=>{});
-  try{
-    const blob=await buildDocx(m);
-    s.close(); offerFile(new File([blob], fileName(m), {type:blob.type}));
-  }catch(e){ s.close(); alert('Bericht konnte nicht erstellt werden: '+e.message); }
+  try{ const blob=await buildDocx(m); s.close(); offerFile(new File([blob], fileName(m), {type:blob.type})); }
+  catch(e){ s.close(); alert('Bericht konnte nicht erstellt werden: '+e.message); }
 }
 async function exportZip(ms){
+  if(!ms.length) return;
   const s=sheet(`<h3>ZIP wird erstellt …</h3><p class="muted small" id="zprog" style="margin:0">0 von ${ms.length}</p>`,()=>{});
   try{
-    const z=new JSZip(); const used=new Set();
+    const z=new JSZip(), used=new Set();
     for(let i=0;i<ms.length;i++){
       let n=fileName(ms[i]); while(used.has(n)) n=n.replace(/\.docx$/,'_2.docx'); used.add(n);
       z.file(n, await buildDocx(ms[i]));
       const p=document.getElementById('zprog'); if(p) p.textContent=(i+1)+' von '+ms.length;
     }
     const blob=await z.generateAsync({type:'blob', mimeType:'application/zip'});
-    s.close(); offerFile(new File([blob], 'Messberichte_'+today()+'.zip', {type:'application/zip'}));
+    const t=terminOf(ms[0]), oids=new Set(ms.map(m=>m.oid));
+    const obj = oids.size===1 && objektOf(ms[0]).messobjekt ? '_'+safeName(objektOf(ms[0]).messobjekt) : '';
+    s.close(); offerFile(new File([blob], 'Messberichte_'+(t.datum||today())+obj+'.zip', {type:'application/zip'}));
   }catch(e){ s.close(); alert('ZIP konnte nicht erstellt werden: '+e.message); }
 }
 // Teilen muss direkt durch einen Tipp ausgelöst werden – daher zweistufig
@@ -591,7 +799,7 @@ function offerFile(file){
     ${canShare?`<button class="btn primary" data-x="share">In Dateien sichern / Teilen</button>`:''}
     <a class="btn ${canShare?'':'primary'}" href="${url}" download="${esc(file.name)}" style="text-decoration:none" data-x="dl">Herunterladen</a>
     <button class="btn" data-x="close">Fertig</button>`, async (x,close)=>{
-      if(x==='share'){ try{ await navigator.share({files:[file]}); toast('Gespeichert'); close(); }catch(e){ if(e.name!=='AbortError') toast('Teilen nicht möglich – „Herunterladen“ nutzen'); } }
+      if(x==='share'){ try{ await navigator.share({files:[file]}); toast('Gespeichert'); close(); }catch(e){ if(e.name!=='AbortError') toast('Teilen nicht möglich, bitte „Herunterladen“ nutzen'); } }
       if(x==='close') close();
     });
 }
