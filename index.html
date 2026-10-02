@@ -120,6 +120,10 @@ textarea.inp{min-height:110px; resize:vertical}
 .pos .inp{flex:1; min-width:0; font-variant-numeric:tabular-nums}
 .seg{display:flex; gap:6px; flex:none}
 .seg .chip{min-width:52px; min-height:52px; border-radius:var(--radius); font-size:17px; font-weight:650}
+.item > .front{display:flex; align-items:center; gap:12px; flex:1; min-width:0}
+.item.swipe{display:block; position:relative; overflow:hidden; padding:0}
+.swipe .front{display:flex; align-items:center; gap:12px; padding:14px 2px; background:var(--bg); position:relative; z-index:1; transition:transform .22s ease; touch-action:pan-y}
+.swipe .del-btn{position:absolute; top:0; right:0; bottom:0; width:92px; border:0; background:#c62828; color:#fff; font-weight:650; font-size:16px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 </head>
@@ -211,9 +215,9 @@ const SYSTEME = [
 ];
 // Gerätedaten pro Messsystem: landen im Bericht unter „Messgeräte“
 const SYS_DEFAULTS = {
-  ni:      {geraetetyp:'National Instruments', aafilter:'', abtastrate:''},
-  arduino: {geraetetyp:'MPU 6050 – Beschleunigungssensor ±4g\nArduino, MKR ZERO - Mikrocontroller', aafilter:'94 Hz (Tiefpassfilter)', abtastrate:'200 Hz (1/0.005s)'},
-  phyphox: {geraetetyp:'Phyphox (Smartphone-App)', aafilter:'', abtastrate:''}
+  ni:      {geraetetyp:'National Instruments', aafilter:'', abtastrate:'', sensoren:'71, 72, 73, 74, 75, 76'},
+  arduino: {geraetetyp:'MPU 6050 – Beschleunigungssensor ±4g\nArduino, MKR ZERO - Mikrocontroller', aafilter:'94 Hz (Tiefpassfilter)', abtastrate:'200 Hz (1/0.005s)', sensoren:'01, 02, 03'},
+  phyphox: {geraetetyp:'Phyphox (Smartphone-App)', aafilter:'', abtastrate:'', sensor:'iPhone13,1, (26.6.1)'}
 };
 const DEFAULTS = { firma:'TU München', messleiter:'Clemens Koller' };
 function freshSettings(){ return Object.assign({}, DEFAULTS, {sys: JSON.parse(JSON.stringify(SYS_DEFAULTS))}); }
@@ -264,11 +268,15 @@ const SYS_CFG = {
 };
 // Gespeicherter Wert oder – solange nie etwas eingetragen wurde – die Voreinstellung
 const val = (o, k, def) => (o && o[k]!==undefined) ? o[k] : def;
+// Sensornummern kommen aus den Einstellungen (⚙︎) und lassen sich dort ändern
+const splitListe = s => String(s||'').split(',').map(x=>x.trim()).filter(Boolean);
+function sensorListe(id){ const l=splitListe(settings.sys[id] && settings.sys[id].sensoren); return l.length ? l : (SYS_CFG[id].sensoren||[]); }
+function sensorDefault(id){ return (settings.sys[id] && settings.sys[id].sensor!=null) ? settings.sys[id].sensor : SYS_CFG[id].sensorText; }
 function sensorenVon(id, o){
   const cfg=SYS_CFG[id];
-  if(cfg.sensorText){ const s=String(val(o,'sys_'+id+'_sensor',cfg.sensorText)).trim(); return s?[s]:[]; }
-  const gew=String(val(o,'sys_'+id+'_sensoren',cfg.sensoren.join(', '))).split(',').map(s=>s.trim()).filter(Boolean);
-  return cfg.sensoren.filter(n=>gew.includes(n));
+  if(cfg.sensorText){ const s=String(val(o,'sys_'+id+'_sensor',sensorDefault(id))).trim(); return s?[s]:[]; }
+  const liste=sensorListe(id), gew=splitListe(val(o,'sys_'+id+'_sensoren',liste.join(', ')));
+  return liste.filter(n=>gew.includes(n)).concat(gew.filter(n=>!liste.includes(n)));
 }
 // Sensorlage: Zahl in Metern oder als Vielfaches der Länge l
 function posText(z, e){ z=String(z||'').trim().replace('.',','); return z ? (e==='l' ? z+' · l' : z+' m') : ''; }
@@ -277,12 +285,14 @@ function systemSeiten(x, o){
   const cfg=SYS_CFG[x.id];
   const dauer={k:'sys_'+x.id+'_dauer', label:'Messdauer', type:'text', def:cfg.dauer.def, chips:cfg.dauer.chips};
   const sensorFeld = cfg.sensorText
-    ? {k:'sys_'+x.id+'_sensor', label:'Sensor', type:'text', def:cfg.sensorText, recent:true}
-    : {k:'sys_'+x.id+'_sensoren', label:'Verwendete Sensoren (antippen)', type:'text', toggle:true, chipsOnly:true, def:cfg.sensoren.join(', '), chips:cfg.sensoren};
+    ? {k:'sys_'+x.id+'_sensor', label:'Sensor', type:'text', def:sensorDefault(x.id), recent:true}
+    : {k:'sys_'+x.id+'_sensoren', label:'Verwendete Sensoren (antippen)', type:'text', toggle:true, chipsOnly:true, def:sensorListe(x.id).join(', '),
+       chips:sensorListe(x.id).concat(splitListe(o['sys_'+x.id+'_sensoren']).filter(n=>!sensorListe(x.id).includes(n))),
+       hint:'Sensornummern änderst du über das Zahnrad auf der Startseite.'};
   const seiten=[{sec:'Messsystem', q:x.name, sys:x.id, part:1, fields:[dauer, sensorFeld]}];
   const sens=sensorenVon(x.id,o);
   if(sens.length) seiten.push({sec:x.name, q: cfg.sensorText ? 'Sensorort' : 'Sensororte', sys:x.id, part:2,
-    fields:sens.map(nr=>({k:ortKey(x.id,nr), label: cfg.sensorText ? 'Sensorort' : 'Sensor '+nr, type:'pos'}))});
+    fields:sens.map(nr=>({k:ortKey(x.id,nr), label: cfg.sensorText ? 'Sensorort' : 'Sensor '+nr, type:'pos', unitDef:'l'}))});
   return seiten;
 }
 function objektSteps(){
@@ -299,7 +309,8 @@ function sensorFelder(t, o, d){
     for(const nr of sensorenVon(x.id,o)){
       const ort=String(o[ortKey(x.id,nr)]||'').trim();
       const s = SYS_CFG[x.id].sensorText ? nr : 'Sensor '+nr;
-      orte.push((mehr ? x.name+', ' : '')+s+': '+(ort||'–'));
+      const datei = x.id==='arduino' && d ? padNr(d['ard_datei_'+nr],4) : '';
+      orte.push((mehr ? x.name+', ' : '')+s+': '+(ort||'–')+(datei?', Datei '+datei:''));
     }
   }
   return { messdauer: dauer.join('\n') || (d&&d.messdauer) || '', sensorstandort: orte.join('\n') || (d&&d.sensorstandort) || '' };
@@ -324,7 +335,20 @@ const NOTIZ_SEITE = {sec:'Notizen', q:'Beobachtungen und Notizen', fields:[
   {k:'notizen_sonst', label:'Weitere Notizen', type:'textarea'},
   {k:'ergaenzungen_sonst', label:'Weitere Ergänzungen', type:'textarea'}]};
 const erregungenVon = o => { const n=String((o&&o.erregung)||'').split(',').map(s=>s.trim()); return ERREGUNGEN.filter(e=>n.includes(e)); };
-function messungSteps(){ return erregungenVon(objekt&&objekt.data).map(e=>ERREGUNG_SEITEN[e]).concat([NOTIZ_SEITE]); }
+// Kurze Zahlen mit führenden Nullen auffüllen (13 → 0013)
+function padNr(v,n){ v=String(v||'').trim(); return /^\d+$/.test(v) && v.length<n ? v.padStart(n,'0') : v; }
+// Arduino: pro aktivem Sensor die Dateibezeichnung dieser Messung (z. B. 0013)
+function vorigeMessung(){
+  if(!cur || kind!=='messung' || !objekt) return null;
+  return messungenOfO(objekt.id).filter(m=>m.id!==cur.id && (m.created||0)<(cur.created||0)).sort((a,b)=>(b.created||0)-(a.created||0))[0]||null;
+}
+function arduinoSeite(){
+  if(!termin || !objekt || !systemeVon(termin.data).some(x=>x.id==='arduino')) return [];
+  const sens=sensorenVon('arduino', objekt.data); if(!sens.length) return [];
+  return [{sec:'Arduino', q:'Dateibezeichnungen', fields:sens.map(nr=>
+    ({k:'ard_datei_'+nr, label:'Arduino '+nr, type:'text', mode:'numeric', ph:'z. B. 0001', pad:4}))}];
+}
+function messungSteps(){ return arduinoSeite().concat(erregungenVon(objekt&&objekt.data).map(e=>ERREGUNG_SEITEN[e]), [NOTIZ_SEITE]); }
 // Diese Angaben schlägt eine neue Messung aus der vorherigen Messung am selben Messobjekt vor
 const CARRY_OVER = [];
 const TERMIN_KEYS = ['datum','windgeschwindigkeit','windrichtung','temperatur','firma','messleiter'];
@@ -429,6 +453,8 @@ const missing = (d, req) => req.filter(k=>!String(d[k]||'').trim());
 function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(saveCur,300); }
 async function saveCur(){ clearTimeout(saveTimer); if(!cur) return; cur.updated=Date.now(); await put(storeOf(kind),cur); }
 async function leave(){ await saveCur(); cur=null; }
+async function deleteObjekt(o){ for(const m of messungenOfO(o.id)) await deleteMessung(m); await deleteObjektBilder(o); await del('objekte',o.id); }
+async function deleteTermin(t){ for(const o of objekteOf(t.id)) await deleteObjekt(o); for(const m of messungenOfT(t.id)) await deleteMessung(m); await del('termine',t.id); }
 async function deleteObjektBilder(o){ for(const im of await imgsOf(o.id)) await del('bilder',im.id); }
 async function deleteMessung(m){ for(const im of await imgsOf(m.id)) await del('bilder',im.id); await del('messungen',m.id); }
 /* ---------- Bilder ---------- */
@@ -499,10 +525,10 @@ async function showHome(){
   const items = termine.map(t=>{
     const os = objekteOf(t.id), n = messungenOfT(t.id).length;
     const namen = os.map(o=>o.data.messobjekt).filter(Boolean).join(', ');
-    return `<li class="item"><button class="open" data-termin="${t.id}">
+    return `<li class="item swipe" data-del="termin" data-id="${t.id}"><div class="front"><button class="open" data-termin="${t.id}">
         <span class="main"><span class="title">${esc(t.data.datum?fmtDate(t.data.datum):'Ohne Datum')}</span>
         <span class="meta">${esc(namen||'Noch kein Messobjekt')}</span></span>
-        <span class="tag">${n} Messung${n===1?'':'en'}</span></button></li>`;
+        <span class="tag">${n} Messung${n===1?'':'en'}</span></button></div><button class="del-btn" tabindex="-1">Löschen</button></li>`;
   }).join('');
   $('#app').innerHTML = `<div class="wrap">
     <div class="bar"><h1>Messtermine</h1><button class="icon-btn" id="setBtn" aria-label="Einstellungen" style="font-size:24px">⚙︎</button></div>
@@ -510,6 +536,7 @@ async function showHome(){
     ${termine.length?`<ul class="list">${items}</ul>`:`<div class="empty">Noch keine Messtermine.<br>Leg den ersten mit „Neuer Messtermin“ an.</div>`}
   </div>`;
   $('#newBtn').onclick = newTermin;
+  enableSwipe();
   $('#setBtn').onclick = showSettings;
   document.querySelectorAll('[data-termin]').forEach(b=>b.onclick=()=>{ termin=termine.find(t=>t.id===b.dataset.termin); showTermin(); });
   window.scrollTo(0,0);
@@ -534,10 +561,10 @@ async function showTermin(){
   ].map(([l,v,i])=>`<button class="rv" data-tstep="${i}"><span class="k">${l}</span><span class="v">${v?esc(v):'–'}</span></button>`).join('');
   const items = os.map(o=>{
     const n=messungenOfO(o.id).length;
-    return `<li class="item"><button class="open" data-obj="${o.id}">
+    return `<li class="item swipe" data-del="objekt" data-id="${o.id}"><div class="front"><button class="open" data-obj="${o.id}">
         <span class="main"><span class="title">${esc(o.data.messobjekt||'Ohne Namen')}</span>
         <span class="meta">${esc(o.data.zweck||'Zweck fehlt noch')}</span></span>
-        <span class="tag">${n} Messung${n===1?'':'en'}</span></button></li>`;
+        <span class="tag">${n} Messung${n===1?'':'en'}</span></button></div><button class="del-btn" tabindex="-1">Löschen</button></li>`;
   }).join('');
   $('#app').innerHTML = `<div class="wrap review">
     <div class="bar"><button class="icon-btn" id="upBtn">Termine</button><h2>${esc(fmtDate(t.datum)||'Messtermin')}</h2><button class="icon-btn" id="moreBtn">Mehr</button></div>
@@ -548,6 +575,7 @@ async function showTermin(){
   <div class="nav"><div class="inner"><button class="btn primary" id="newOBtn">Neues Messobjekt</button></div></div>`;
   $('#upBtn').onclick = showHome;
   $('#newOBtn').onclick = newObjekt;
+  enableSwipe();
   document.querySelectorAll('[data-tstep]').forEach(b=>b.onclick=()=>{ cur=termin; kind='termin'; step=+b.dataset.tstep; showStep(); });
   document.querySelectorAll('[data-obj]').forEach(b=>b.onclick=()=>{ objekt=os.find(o=>o.id===b.dataset.obj); showObjekt(); });
   $('#moreBtn').onclick = ()=>sheet(`<h3>Messtermin ${esc(fmtDate(t.datum))}</h3>
@@ -594,14 +622,14 @@ async function showObjekt(){
       : `<p class="muted small">Beim Messtermin sind keine Messsysteme ausgewählt.</p>`);
   const items = ms.map(m=>{
     const d=m.data, miss=missing(d,REQUIRED_M).length, on=selected.has(m.id);
-    return `<li class="item">
+    return `<li class="item ${selectMode?'':'swipe'}" data-del="messung" data-id="${m.id}"><div class="front">
       ${selectMode?`<button class="check ${on?'on':''}" data-sel="${m.id}" aria-label="Auswählen">${on?'✓':''}</button>`:''}
       <button class="open" data-open="${m.id}">
         <span class="num">${esc(d.nummer||'–')}</span>
         <span class="main"><span class="title">${esc(d.uhrzeit||'')} Uhr</span>
         <span class="meta">${esc([d.personen?d.personen+' Pers.':'', d.p_art, d.hammer_ort?'Hammer '+d.hammer_ort:''].filter(Boolean).join(', ')||d.spuerbarkeit||'')}</span></span>
         <span class="tag ${miss?'':'done'}">${miss?'Entwurf':'Fertig'}</span>
-      </button></li>`;
+      </button></div>${selectMode?'':'<button class="del-btn" tabindex="-1">Löschen</button>'}</li>`;
   }).join('');
   $('#app').innerHTML = `<div class="wrap review">
     <div class="bar"><button class="icon-btn" id="upBtn">Termin</button><h2>${esc(o.messobjekt||'Messobjekt')}</h2><button class="icon-btn" id="moreBtn">Mehr</button></div>
@@ -617,6 +645,7 @@ async function showObjekt(){
       : `<button class="btn primary" id="newMBtn">Neue Messung</button>`}
   </div></div>`;
   $('#upBtn').onclick = ()=>{ selectMode=false; selected.clear(); showTermin(); };
+  enableSwipe();
   document.querySelectorAll('[data-ostep]').forEach(b=>b.onclick=()=>{ cur=objekt; kind='objekt'; step=+b.dataset.ostep; showStep(); });
   $('#newMBtn') && ($('#newMBtn').onclick = newMessung);
   $('#selBtn') && ($('#selBtn').onclick = ()=>{ selectMode=!selectMode; selected.clear(); showObjekt(); });
@@ -681,11 +710,9 @@ async function showReview(){
     ${html}
   </div>
   <div class="nav"><div class="inner">
-    <button class="btn back" id="editBtn">Abfrage</button>
-    <button class="btn primary" id="docBtn">Bericht erstellen</button></div></div>`;
+    <button class="btn primary" id="nextMBtn">Nächste Messung</button></div></div>`;
   $('#upBtn').onclick=showObjekt;
-  $('#editBtn').onclick=()=>{ step=0; showStep(); };
-  $('#docBtn').onclick=()=>exportSingle(cur);
+  $('#nextMBtn').onclick=async()=>{ await saveCur(); newMessung(); };
   document.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=> b.dataset.up==='t' ? showTermin() : showObjekt());
   document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{ step=+b.dataset.go; showStep(); });
   $('#moreBtn').onclick=()=>sheet(`<h3>Messung ${esc(d.nummer||'')}</h3>
@@ -695,6 +722,60 @@ async function showReview(){
         if(x==='close') close();
       });
   window.scrollTo(0,0);
+}
+
+/* ---------- Wischen zum Löschen (wie in iOS) ---------- */
+const DEL_W = 92;
+function closeSwipes(except){ document.querySelectorAll('.swipe.open').forEach(li=>{ if(li!==except){ li.classList.remove('open'); li.querySelector('.front').style.transform=''; } }); }
+function enableSwipe(){
+  document.querySelectorAll('.swipe').forEach(li=>{
+    const front=li.querySelector('.front');
+    let sx=0, sy=0, dx=0, lock=null, moved=false;
+    front.addEventListener('touchstart',e=>{ const t=e.touches[0]; sx=t.clientX; sy=t.clientY; dx=0; lock=null; moved=false; front.style.transition='none'; },{passive:true});
+    front.addEventListener('touchmove',e=>{
+      const t=e.touches[0], mx=t.clientX-sx, my=t.clientY-sy;
+      if(lock===null && (Math.abs(mx)>8 || Math.abs(my)>8)) lock = Math.abs(mx)>Math.abs(my) ? 'x' : 'y';
+      if(lock!=='x') return;
+      e.preventDefault(); moved=true; closeSwipes(li);
+      dx = Math.min(0, Math.max(-DEL_W*1.6, (li.classList.contains('open')?-DEL_W:0)+mx));
+      front.style.transform=`translateX(${dx}px)`;
+    },{passive:false});
+    front.addEventListener('touchend',()=>{
+      front.style.transition='';
+      if(lock!=='x') return;
+      const auf = dx < -DEL_W/2;
+      li.classList.toggle('open', auf);
+      front.style.transform = auf ? `translateX(${-DEL_W}px)` : '';
+    });
+    // Nach dem Wischen keinen Tipp auslösen; offener Eintrag schließt sich beim Antippen
+    front.addEventListener('click',e=>{
+      if(moved || li.classList.contains('open')){ e.stopPropagation(); e.preventDefault(); moved=false; if(li.classList.contains('open')){ li.classList.remove('open'); front.style.transform=''; } }
+    },true);
+    li.querySelector('.del-btn').onclick = async ()=>{
+      const ok = await loeschenNachFrage(li.dataset.del, li.dataset.id);
+      if(!ok){ li.classList.remove('open'); front.style.transform=''; }
+    };
+  });
+}
+async function loeschenNachFrage(typ, id){
+  if(typ==='termin'){
+    const t=termine.find(x=>x.id===id); if(!t) return false;
+    const no=objekteOf(id).length, nm=messungenOfT(id).length;
+    if(!confirm('Messtermin '+(fmtDate(t.data.datum)||'')+' mit '+no+' Messobjekt'+(no===1?'':'en')+' und '+nm+' Messung'+(nm===1?'':'en')+' wirklich löschen?')) return false;
+    await deleteTermin(t); showHome(); return true;
+  }
+  if(typ==='objekt'){
+    const o=objekte.find(x=>x.id===id); if(!o) return false;
+    const nm=messungenOfO(id).length;
+    if(!confirm('Messobjekt „'+(o.data.messobjekt||'ohne Namen')+'“ mit '+nm+' Messung'+(nm===1?'':'en')+' wirklich löschen?')) return false;
+    await deleteObjekt(o); showTermin(); return true;
+  }
+  if(typ==='messung'){
+    const m=messungen.find(x=>x.id===id); if(!m) return false;
+    if(!confirm('Messung '+(m.data.nummer||'')+' wirklich löschen?')) return false;
+    await deleteMessung(m); showObjekt(); return true;
+  }
+  return false;
 }
 /* ---------- Abfrage (für Termin, Messobjekt und Messung) ---------- */
 function recentValues(k){
@@ -711,19 +792,20 @@ function fieldHTML(f, single){
   } else if(f.type==='textarea'){
     h += `<textarea class="inp" id="${id}" data-k="${f.k}" placeholder="${esc(f.ph||'')}">${esc(v)}</textarea>`;
   } else if(f.type==='pos'){
-    const z=cur.data[f.k+'_z']||'', e=cur.data[f.k+'_e']||'m';
-    h += `<div class="pos"><input class="inp" id="${id}" data-pos="${f.k}" value="${esc(z)}" inputmode="decimal" placeholder="0,00" enterkeyhint="next" autocomplete="off">
+    const z=cur.data[f.k+'_z']||'', e=cur.data[f.k+'_e'] || (/ m$/.test(cur.data[f.k]||'') ? 'm' : (f.unitDef||'m'));
+    h += `<div class="pos"><input class="inp" id="${id}" data-pos="${f.k}" data-def="${e}" value="${esc(z)}" inputmode="decimal" placeholder="0,00" enterkeyhint="next" autocomplete="off">
       <div class="seg"><button class="chip ${e==='m'?'on':''}" data-unit="${f.k}" data-val="m">m</button><button class="chip ${e==='l'?'on':''}" data-unit="${f.k}" data-val="l" aria-label="mal Länge l">· <i style="font-family:Georgia,serif">l</i></button></div></div>`;
   } else if(f.chipsOnly){
     /* nur Auswahl per Antippen */
   } else {
     const t = f.type==='date'?'date':f.type==='time'?'time':'text';
-    h += `<input class="inp" id="${id}" type="${t}" data-k="${f.k}" value="${esc(v)}" placeholder="${esc(f.ph||'')}" ${f.mode?`inputmode="${f.mode}"`:''} enterkeyhint="next" autocomplete="off">`;
+    h += `<input class="inp" id="${id}" type="${t}" data-k="${f.k}" value="${esc(v)}" placeholder="${esc(f.ph||'')}" ${f.mode?`inputmode="${f.mode}"`:''} ${f.pad?`data-pad="${f.pad}"`:''} enterkeyhint="next" autocomplete="off">`;
   }
   if(f.chips){
     const parts = String(v).split(',').map(s=>s.trim());
     h += `<div class="chips">${f.chips.map(c=>`<button class="chip ${(f.toggle?parts.includes(c):v===c)?'on':''}" data-${f.toggle?'tog':'set'}="${f.k}" data-val="${esc(c)}">${esc(c)}</button>`).join('')}</div>`;
   }
+  if(f.hint) h += `<p class="muted small" style="margin:10px 0 0">${esc(f.hint)}</p>`;
   if(f.recent){
     const r = recentValues(f.k).filter(x=>x!==v);
     if(r.length) h += `<div class="recent">Zuletzt verwendet</div><div class="chips">${r.map(c=>`<button class="chip" data-set="${f.k}" data-val="${esc(c)}">${esc(c.length>40?c.slice(0,40)+'…':c)}</button>`).join('')}</div>`;
@@ -789,7 +871,8 @@ function bindStep(s){
     el.oninput = ()=>{ cur.data[el.dataset.k]=el.value; scheduleSave(); syncChips(el.dataset.k); };
     if(el.tagName==='INPUT') el.onkeydown = e=>{ if(e.key==='Enter'){ e.preventDefault(); const all=[...document.querySelectorAll('.inp[data-k], .inp[data-pos]')]; const i=all.indexOf(el); if(i<all.length-1) all[i+1].focus(); else $('#nextBtn').click(); } };
   });
-  const setPos = k => { cur.data[k] = posText(cur.data[k+'_z'], cur.data[k+'_e']||'m'); scheduleSave(); };
+  document.querySelectorAll('.inp[data-pad]').forEach(el=>el.addEventListener('blur',()=>{ const p=padNr(el.value,+el.dataset.pad); if(p!==el.value){ el.value=p; cur.data[el.dataset.k]=p; scheduleSave(); } }));
+  const setPos = k => { if(!cur.data[k+'_e']){ const el=document.querySelector(`[data-pos="${k}"]`); cur.data[k+'_e']=(el&&el.dataset.def)||'m'; } cur.data[k] = posText(cur.data[k+'_z'], cur.data[k+'_e']); scheduleSave(); };
   document.querySelectorAll('.inp[data-pos]').forEach(el=>{
     el.oninput = ()=>{ const k=el.dataset.pos; cur.data[k+'_z']=el.value.replace(/[^0-9.,]/g,''); if(el.value!==cur.data[k+'_z']) el.value=cur.data[k+'_z']; setPos(k); };
     el.onkeydown = e=>{ if(e.key==='Enter'){ e.preventDefault(); const all=[...document.querySelectorAll('.inp[data-k], .inp[data-pos]')]; const i=all.indexOf(el); if(i<all.length-1) all[i+1].focus(); else $('#nextBtn').click(); } };
@@ -835,14 +918,17 @@ function showSettings(){
     ${SYSTEME.map(x=>`<h3>${esc(x.name)}</h3>
       <div class="field"><label for="s_${x.id}_g">Gerätetyp</label>${inp('s_'+x.id+'_g',settings.sys[x.id].geraetetyp,true)}</div>
       <div class="field"><label for="s_${x.id}_a">Anti-Aliasing-Filter</label>${inp('s_'+x.id+'_a',settings.sys[x.id].aafilter)}</div>
-      <div class="field"><label for="s_${x.id}_r">Abtastrate</label>${inp('s_'+x.id+'_r',settings.sys[x.id].abtastrate)}</div>`).join('')}
+      <div class="field"><label for="s_${x.id}_r">Abtastrate</label>${inp('s_'+x.id+'_r',settings.sys[x.id].abtastrate)}</div>
+      ${SYS_CFG[x.id].sensorText
+        ? `<div class="field"><label for="s_${x.id}_s">Sensor (Voreinstellung)</label>${inp('s_'+x.id+'_s',sensorDefault(x.id))}</div>`
+        : `<div class="field"><label for="s_${x.id}_s">Sensornummern, durch Komma getrennt</label>${inp('s_'+x.id+'_s',sensorListe(x.id).join(', '))}</div>`}`).join('')}
     <button class="btn" id="resetBtn">Auf Vorlage zurücksetzen</button>
     <p class="muted small" style="margin-top:28px">Alle Messungen und Bilder liegen nur auf diesem Gerät. Fertige Berichte regelmäßig in der Dateien-App sichern.</p>
   </div>`;
   $('#homeBtn').onclick=showHome;
   const bind=(id,fn)=>{ $('#'+id).oninput=e=>{ fn(e.target.value); saveSettings(settings); }; };
   bind('s_firma',v=>settings.firma=v); bind('s_messleiter',v=>settings.messleiter=v);
-  SYSTEME.forEach(x=>{ bind('s_'+x.id+'_g',v=>settings.sys[x.id].geraetetyp=v); bind('s_'+x.id+'_a',v=>settings.sys[x.id].aafilter=v); bind('s_'+x.id+'_r',v=>settings.sys[x.id].abtastrate=v); });
+  SYSTEME.forEach(x=>{ bind('s_'+x.id+'_g',v=>settings.sys[x.id].geraetetyp=v); bind('s_'+x.id+'_a',v=>settings.sys[x.id].aafilter=v); bind('s_'+x.id+'_r',v=>settings.sys[x.id].abtastrate=v); bind('s_'+x.id+'_s',v=>{ if(SYS_CFG[x.id].sensorText) settings.sys[x.id].sensor=v; else settings.sys[x.id].sensoren=v; }); });
   $('#resetBtn').onclick=()=>{ if(confirm('Standardwerte auf die Vorlage zurücksetzen?')){ settings=freshSettings(); saveSettings(settings); showSettings(); } };
 }
 
