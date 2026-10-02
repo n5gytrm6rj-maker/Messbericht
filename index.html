@@ -153,6 +153,10 @@ details.sek h4.sub{font-size:13px; font-weight:650; color:var(--muted); margin:1
 .pop-item:last-child{border-bottom:0}
 .pop-item.danger{color:var(--danger)}
 .pop-item:disabled{opacity:.4}
+/* iOS: Datums- und Zeitfelder nicht breiter als der Bildschirm */
+input[type="date"].inp, input[type="time"].inp{-webkit-appearance:none; appearance:none; display:block; width:100%; min-width:0; max-width:100%; line-height:1.3; text-align:left}
+input[type="date"].inp::-webkit-date-and-time-value, input[type="time"].inp::-webkit-date-and-time-value{text-align:left; margin:0; min-height:1.3em}
+.field{min-width:0; max-width:100%}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 </head>
@@ -311,7 +315,9 @@ function sensorenVon(id, o){
   return liste.filter(n=>gew.includes(n)).concat(gew.filter(n=>!liste.includes(n)));
 }
 // Sensorlage: Zahl in Metern oder als Vielfaches der Länge l
-function posText(z, e){ z=String(z||'').trim().replace('.',','); return z ? (e==='l' ? z+' · l' : z+' m') : ''; }
+// Dezimalzahlen vereinheitlichen: Punkt → Komma, führendes Komma → 0, (z. B. ,02 → 0,02)
+function normDez(v){ const t=String(v==null?'':v).trim().replace('.',','); return t.replace(/^([+\-−]?),/, '$10,'); }
+function posText(z, e){ z=normDez(z); return z ? (e==='l' ? z+' · l' : z+' m') : ''; }
 const ortKey = (id, nr) => id==='phyphox' ? 'sys_phyphox_ort' : 'sys_'+id+'_ort_'+nr;
 function systemSeiten(x, o){
   const cfg=SYS_CFG[x.id];
@@ -387,7 +393,7 @@ function ersteSeite(){
   return {sec:'Messung', q: zug ? 'Zugkraft und Notizen' : 'Notizen', fields: zug ? [{k:'zugkraft', label:'Zugkraft in kN', type:'text', mode:'decimal', ph:'z. B. 12,5'}, notiz] : [notiz]};
 }
 function messungSteps(){ return [ersteSeite()].concat(erregungenVon(objekt&&objekt.data).map(e=>ERREGUNG_SEITEN[e]), [NOTIZ_SEITE], arduinoSeite()); }
-function zugkraftText(v){ const t=String(v||'').trim().replace('.',','); return t ? (/^[-+]?\d+(,\d+)?$/.test(t) ? t+' kN' : t) : ''; }
+function zugkraftText(v){ const t=normDez(v); return t ? (/^[-+]?\d+(,\d+)?$/.test(t) ? t+' kN' : t) : ''; }
 // Diese Angaben schlägt eine neue Messung aus der vorherigen Messung am selben Messobjekt vor
 // Neue Messung übernimmt nur diese Angaben aus der vorherigen Messung am selben Objekt
 const UEBERNAHME = ['zugkraft','mess_notizen','personen','gewicht','p_art','hammer_typ','hammer_ort','hammer_spitze'];
@@ -460,7 +466,7 @@ function objektTitel(t, o){
 }
 // Überschrift im Bereich Messung: „02 - Gewindestange (02.10.)“
 function messungTitel(t, o, d){ const nr=String((d&&d.nummer)||'').trim(); return (nr ? nr+' - ' : '')+objektTitel(t,o); }
-function fmtTemp(v){ const t=String(v||'').trim(); return /^[-+−]?\d+([.,]\d+)?$/.test(t) ? t+' °C' : t; }
+function fmtTemp(v){ const t=normDez(v); return /^[-+−]?\d+([.,]\d+)?$/.test(t) ? t+' °C' : t; }
 function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2200); }
 function safeName(s){ return String(s||'').replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/Ä/g,'Ae').replace(/Ö/g,'Oe').replace(/Ü/g,'Ue').replace(/ß/g,'ss').replace(/[\\/:*?"<>|\s]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'').slice(0,60); }
 function b64ToBytes(b){ const s=atob(b); const a=new Uint8Array(s.length); for(let i=0;i<s.length;i++) a[i]=s.charCodeAt(i); return a; }
@@ -998,6 +1004,9 @@ function bindStep(s){
     if(el.tagName==='INPUT') el.onkeydown = e=>{ if(e.key==='Enter'){ e.preventDefault(); const all=[...document.querySelectorAll('.inp[data-k], .inp[data-pos]')]; const i=all.indexOf(el); if(i<all.length-1) all[i+1].focus(); else $('#nextBtn').click(); } };
   });
   document.querySelectorAll('.inp[data-pad]').forEach(el=>el.addEventListener('blur',()=>{ const p=padNr(el.value,+el.dataset.pad); if(p!==el.value){ el.value=p; cur.data[el.dataset.k]=p; scheduleSave(); } }));
+  // Beim Verlassen eines Dezimalfelds ,02 zu 0,02 ergänzen
+  document.querySelectorAll('.inp[data-k][inputmode="decimal"]').forEach(el=>el.addEventListener('blur',()=>{ const n=normDez(el.value); if(n!==el.value){ el.value=n; cur.data[el.dataset.k]=n; scheduleSave(); } }));
+  document.querySelectorAll('.inp[data-pos]').forEach(el=>el.addEventListener('blur',()=>{ const n=normDez(el.value); if(n!==el.value){ el.value=n; cur.data[el.dataset.pos+'_z']=n; setPos(el.dataset.pos); } }));
   const setPos = k => { if(!cur.data[k+'_e']){ const el=document.querySelector(`[data-pos="${k}"]`); cur.data[k+'_e']=(el&&el.dataset.def)||'m'; } cur.data[k] = posText(cur.data[k+'_z'], cur.data[k+'_e']); scheduleSave(); };
   document.querySelectorAll('.inp[data-pos]').forEach(el=>{
     el.addEventListener('focus',()=>{ if(istUebernommen(el.dataset.pos)) setTimeout(()=>{ try{ el.setSelectionRange(0, el.value.length); }catch(e){ el.select(); } },0); });
@@ -1077,10 +1086,10 @@ function reportFields(m){
   return { nummer:d.nummer, datum:fmtDate(t.datum), uhrzeit:d.uhrzeit,
     windgeschwindigkeit:t.windgeschwindigkeit, windrichtung:t.windrichtung, temperatur:fmtTemp(t.temperatur),
     firma:t.firma, messleiter:t.messleiter,
-    zweck:o.zweck, messobjekt:[o.messobjekt, o.objekt_notizen, d.mess_notizen].filter(x=>String(x||'').trim()).join('\n'), ...geraeteFelder(t,d),
+    zweck:o.zweck, messobjekt:[o.messobjekt, o.objekt_notizen, d.mess_notizen, zugkraftText(d.zugkraft)?'Zugkraft: '+zugkraftText(d.zugkraft):''].filter(x=>String(x||'').trim()).join('\n'), ...geraeteFelder(t,d),
     ...sensorFelder(t,o,d), erregung:erregungText(o,d),
-    ergaenzungen: lines([['Zugkraft',zugkraftText(d.zugkraft)],['Personenanzahl',d.personen],['Gewicht',d.gewicht],['Erkennbare Quellen',d.amb_quellen],
-      ['Impulshammer',d.hammer_typ],['Anschlagpunkt Impulshammer',d.hammer_ort],['Hammerspitze',d.hammer_spitze]], d.ergaenzungen_sonst),
+    ergaenzungen: lines([['Personenanzahl',d.personen],['Gewicht',d.gewicht],['Erkennbare Quellen',d.amb_quellen],
+      ['Impulshammer',d.hammer_typ],['Hammerspitze',d.hammer_spitze]], d.ergaenzungen_sonst),
     notizen: lines([['Spürbarkeit',d.spuerbarkeit],['Sekundäreffekte',d.sekundaer]], d.notizen_sonst) };
 }
 // Messgeräte aus den beim Termin gewählten Systemen zusammensetzen
@@ -1096,7 +1105,9 @@ function geraeteFelder(t, d){
 function erregungText(o,d){
   const er=erregungenVon(o);
   if(!er.length) return o.erregung||d.erregung||'';
-  return er.map(x=> x==='Personen' && d.p_art ? 'Personen ('+d.p_art+')' : x).join(', ');
+  return er.map(x=> x==='Personen' && d.p_art ? 'Personen ('+d.p_art+')'
+    : x==='Impulshammer' && String(d.hammer_ort||'').trim() ? 'Impulshammer (Anschlagpunkt '+posText(d.hammer_ort_z!==undefined?d.hammer_ort_z:String(d.hammer_ort).replace(/ (m|· l)$/,''), d.hammer_ort_e|| (/· l$/.test(d.hammer_ort)?'l':'m'))+')'
+    : x).join(', ');
 }
 function fileName(m){ const d=m.data, t=terminOf(m), o=objektOf(m); return (safeName(d.nummer)||'xx')+'-Messbericht'+(t.datum?'_'+t.datum:'')+(o.messobjekt?'_'+safeName(o.messobjekt):'')+'.docx'; }
 async function buildDocx(m){
