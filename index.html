@@ -32,10 +32,10 @@ body{margin:0; min-height:100%; background:var(--bg); color:var(--ink); font-siz
 button,input,textarea,select{font:inherit; color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:3px solid var(--steel); outline-offset:2px}
-.wrap{max-width:640px; margin:0 auto; padding:16px 16px 120px}
+.wrap{max-width:640px; margin:0 auto; padding:16px 16px 180px}
 .bar{display:flex; align-items:center; gap:8px; min-height:48px}
 .bar h1{font-size:28px; font-weight:750; letter-spacing:-.02em; margin:0; flex:1}
-.bar h2{font-size:17px; font-weight:650; margin:0; flex:1; text-align:center}
+.bar h2{font-size:17px; font-weight:650; margin:0; flex:1; min-width:0; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .icon-btn{background:none; border:0; padding:10px; min-width:44px; min-height:44px; color:var(--steel); font-weight:600; font-size:17px}
 .btn{display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:54px; border-radius:var(--radius); border:1.5px solid var(--line); background:var(--panel); font-weight:650; padding:12px 16px}
 .btn.primary{background:var(--signal); color:var(--signal-ink); border-color:transparent}
@@ -49,7 +49,7 @@ button{cursor:pointer}
 .small{font-size:14px}
 
 /* Liste */
-.list{margin:18px 0 0; padding:0; list-style:none; border-top:1px solid var(--line)}
+.list{margin:8px 0 0; padding:0; list-style:none; border-top:1px solid var(--line)}
 .item{display:flex; align-items:center; gap:12px; padding:14px 2px; border-bottom:1px solid var(--line)}
 .item .num{font-variant-numeric:tabular-nums; font-weight:750; font-size:22px; min-width:2.6em}
 .item .main{flex:1; min-width:0}
@@ -62,7 +62,10 @@ button{cursor:pointer}
 .tag.done{border-color:var(--ok); color:var(--ok)}
 .empty{padding:40px 8px; text-align:center; color:var(--muted)}
 
-/* Maßband-Fortschritt */
+/* Fortschritt (iOS-Stil) */
+.progress{height:4px; border-radius:2px; background:var(--line); overflow:hidden; margin:4px 0 20px}
+.progress-fill{height:100%; border-radius:2px; background:var(--steel); transition:width .25s ease}
+/* Maßband-Fortschritt (nicht mehr verwendet) */
 .tape{position:relative; height:30px; margin:6px 0 18px; border-radius:4px; background:var(--panel); border:1.5px solid var(--line); overflow:hidden}
 .tape .fill{position:absolute; inset:0 auto 0 0; background:var(--signal); transition:width .25s ease}
 .tape .ticks{position:absolute; inset:0; display:flex}
@@ -88,7 +91,13 @@ textarea.inp{min-height:110px; resize:vertical}
 .nav .inner{max-width:640px; margin:0 auto; display:flex; gap:10px}
 .nav .btn{flex:1}
 .nav .btn.back{flex:0 0 26%}
-.nav #skipBtn{flex:0 0 30%; font-weight:550; color:var(--muted); padding:12px 6px}
+.nav .inner.wiz{flex-direction:column; gap:4px}
+.wiz-row{display:flex; gap:8px}
+.link-btn{flex:1; min-width:0; display:flex; align-items:center; gap:6px; min-height:44px; padding:0 4px; background:none; border:0; color:var(--steel); font-weight:600; font-size:16px}
+.link-btn span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.link-btn svg{flex:none; height:18px; width:auto}
+.link-btn.right{justify-content:flex-end}
+.link-btn:disabled{visibility:hidden}
 
 /* Bilder */
 .thumbs{display:grid; gap:14px; margin-top:16px}
@@ -124,6 +133,19 @@ textarea.inp{min-height:110px; resize:vertical}
 .item.swipe{display:block; position:relative; overflow:hidden; padding:0}
 .swipe .front{display:flex; align-items:center; gap:12px; padding:14px 2px; background:var(--bg); position:relative; z-index:1; transition:transform .22s ease; touch-action:pan-y}
 .swipe .del-btn{position:absolute; top:0; right:0; bottom:0; width:92px; border:0; background:#c62828; color:#fff; font-weight:650; font-size:16px}
+.back-btn{display:flex; align-items:center; justify-content:flex-start; padding-left:4px; min-width:56px}
+.more-btn{display:flex; align-items:center; justify-content:flex-end; min-width:56px}
+details.sek{border-bottom:1px solid var(--line)}
+details.sek > summary{list-style:none; display:flex; align-items:center; gap:10px; padding:14px 0; cursor:pointer; min-height:48px}
+details.sek > summary::-webkit-details-marker{display:none}
+.sek .st{color:var(--steel); font-weight:650; font-size:15px; flex:none}
+.sek .sp{flex:1; min-width:0; color:var(--muted); font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:right}
+.sek .chev{flex:none; color:var(--muted); transition:transform .2s}
+details.sek[open] .chev{transform:rotate(180deg)}
+details.sek[open] .sp{visibility:hidden}
+details.sek[open]{padding-bottom:8px}
+details.sek .rv:last-child{border-bottom:0}
+details.sek h4.sub{font-size:13px; font-weight:650; color:var(--muted); margin:16px 0 2px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 </head>
@@ -216,7 +238,7 @@ const SYSTEME = [
 // Gerätedaten pro Messsystem: landen im Bericht unter „Messgeräte“
 const SYS_DEFAULTS = {
   ni:      {geraetetyp:'National Instruments', aafilter:'', abtastrate:'', sensoren:'71, 72, 73, 74, 75, 76'},
-  arduino: {geraetetyp:'MPU 6050 – Beschleunigungssensor ±4g\nArduino, MKR ZERO - Mikrocontroller', aafilter:'94 Hz (Tiefpassfilter)', abtastrate:'200 Hz (1/0.005s)', sensoren:'01, 02, 03'},
+  arduino: {geraetetyp:'Arduino', aafilter:'', abtastrate:'', sensoren:'01, 02, 03'},
   phyphox: {geraetetyp:'Phyphox (Smartphone-App)', aafilter:'', abtastrate:'', sensor:'iPhone13,1, (26.6.1)'}
 };
 const DEFAULTS = { firma:'TU München', messleiter:'Clemens Koller' };
@@ -228,6 +250,9 @@ function loadSettings(){
     if(st.firma!=null) s.firma=st.firma;
     if(st.messleiter!=null) s.messleiter=st.messleiter;
     if(st.sys) for(const k in s.sys) Object.assign(s.sys[k], st.sys[k]||{});
+    // Frühere Arduino-Voreinstellungen aus der Word-Vorlage entfernen, sofern unverändert gespeichert
+    const alt = {geraetetyp:'MPU 6050 – Beschleunigungssensor ±4g\nArduino, MKR ZERO - Mikrocontroller', aafilter:'94 Hz (Tiefpassfilter)', abtastrate:'200 Hz (1/0.005s)'};
+    for(const k in alt) if(s.sys.arduino[k]===alt[k]) s.sys.arduino[k]=SYS_DEFAULTS.arduino[k];
     else ['geraetetyp','aafilter','abtastrate'].forEach(k=>{ if(st[k]!=null) s.sys.arduino[k]=st[k]; }); // alte Einstellungen
   }catch(e){}
   return s;
@@ -248,8 +273,8 @@ const TERMIN_STEPS = [
 ];
 // Messobjekt innerhalb eines Termins
 const OBJEKT_STEPS = [
-  {sec:'Messobjekt', q:'Messobjekt', fields:[{k:'messobjekt', type:'text', recent:true}]},
-  {sec:'Messobjekt', q:'Zweck der Messung', fields:[{k:'zweck', type:'textarea', recent:true}]}
+  {sec:'Messobjekt', q:'Messobjekt', fields:[{k:'messobjekt', type:'text', ph:'oder frei eingeben', chips:['Gewindestange','Stahlseil'], recent:true}]},
+  {sec:'Messobjekt', q:'Zweck der Messung', fields:[{k:'zweck', type:'textarea', ph:'oder frei eingeben', toggle:true, chips:['Zugkraftermittlung','Eigenfrequenzanalyse'], recent:true}]}
 ];
 // Beim Termin gewählte Messsysteme (in fester Reihenfolge)
 function systemeVon(t){ const n=String((t&&t.systeme)||'').split(',').map(s=>s.trim()); return SYSTEME.filter(x=>n.includes(x.name)); }
@@ -326,14 +351,12 @@ const ERREGUNG_SEITEN = {
     {k:'amb_quellen', label:'Erkennbare Quellen', type:'text', toggle:true, ph:'weitere Quellen', chips:['Wind','Verkehr','Fußgänger','Maschinen','Bauarbeiten']}]},
   'Impulshammer': {sec:'Anregung', q:'Impulshammer', fields:[
     {k:'hammer_typ', label:'Hammer (Masse oder Größe)', type:'text', ph:'z. B. 0,32 kg', chips:['klein','mittel','groß'], recent:true},
-    {k:'hammer_ort', label:'Anschlagpunkt', type:'pos'},
+    {k:'hammer_ort', label:'Anschlagpunkt', type:'pos', quick:['0,25','0,33','0,50']},
     {k:'hammer_spitze', label:'Hammerspitze', type:'text', chips:['Gummi','Kunststoff','Stahl']}]}
 };
 const NOTIZ_SEITE = {sec:'Notizen', q:'Beobachtungen und Notizen', fields:[
   {k:'spuerbarkeit', label:'Spürbarkeit', type:'text', chips:['nicht spürbar','kaum spürbar','spürbar','deutlich spürbar','unangenehm']},
-  {k:'sekundaer', label:'Sekundäreffekte', type:'textarea', chips:['keine','Geländer klappert','Geräusche'], toggle:true},
-  {k:'notizen_sonst', label:'Weitere Notizen', type:'textarea'},
-  {k:'ergaenzungen_sonst', label:'Weitere Ergänzungen', type:'textarea'}]};
+  {k:'notizen_sonst', label:'Weitere Notizen', type:'textarea'}]};
 const erregungenVon = o => { const n=String((o&&o.erregung)||'').split(',').map(s=>s.trim()); return ERREGUNGEN.filter(e=>n.includes(e)); };
 // Kurze Zahlen mit führenden Nullen auffüllen (13 → 0013)
 function padNr(v,n){ v=String(v||'').trim(); return /^\d+$/.test(v) && v.length<n ? v.padStart(n,'0') : v; }
@@ -346,11 +369,32 @@ function arduinoSeite(){
   if(!termin || !objekt || !systemeVon(termin.data).some(x=>x.id==='arduino')) return [];
   const sens=sensorenVon('arduino', objekt.data); if(!sens.length) return [];
   return [{sec:'Arduino', q:'Dateibezeichnungen', fields:sens.map(nr=>
-    ({k:'ard_datei_'+nr, label:'Arduino '+nr, type:'text', mode:'numeric', ph:'z. B. 0001', pad:4}))}];
+    ({k:'ard_datei_'+nr, label:'Arduino '+nr, type:'text', mode:'numeric', ph:'z. B. 0001', pad:4, dupCheck:true, spiegel:'ard_datei'}))}];
 }
-function messungSteps(){ return arduinoSeite().concat(erregungenVon(objekt&&objekt.data).map(e=>ERREGUNG_SEITEN[e]), [NOTIZ_SEITE]); }
+// Bei Zweck „Zugkraftermittlung“ fragt jede Messung die Zugkraft ab
+// Erste Seite der Messung: Zugkraft (nur bei Zugkraftermittlung) und Notizen mit Grundstab-Schnellauswahl
+const mitZugkraft = o => String((o&&o.zweck)||'').includes('Zugkraftermittlung');
+function ersteSeite(){
+  const zug = mitZugkraft(objekt&&objekt.data);
+  const notiz = {k:'mess_notizen', label:'Notizen', type:'textarea', ph:'oder frei eingeben', toggle:true, chips:['Grundstab II','Grundstab III','Grundstab IV']};
+  return {sec:'Messung', q: zug ? 'Zugkraft und Notizen' : 'Notizen', fields: zug ? [{k:'zugkraft', label:'Zugkraft in kN', type:'text', mode:'decimal', ph:'z. B. 12,5'}, notiz] : [notiz]};
+}
+function messungSteps(){ return [ersteSeite()].concat(erregungenVon(objekt&&objekt.data).map(e=>ERREGUNG_SEITEN[e]), [NOTIZ_SEITE], arduinoSeite()); }
+function zugkraftText(v){ const t=String(v||'').trim().replace('.',','); return t ? (/^[-+]?\d+(,\d+)?$/.test(t) ? t+' kN' : t) : ''; }
 // Diese Angaben schlägt eine neue Messung aus der vorherigen Messung am selben Messobjekt vor
-const CARRY_OVER = [];
+// Neue Messung übernimmt nur diese Angaben aus der vorherigen Messung am selben Objekt
+const UEBERNAHME = ['zugkraft','mess_notizen','personen','gewicht','p_art','hammer_typ','hammer_ort','hammer_spitze'];
+// Übernommene Angabe noch unverändert? Dann ersetzt die erste neue Auswahl sie komplett.
+const istUebernommen = k => !!(cur && cur.carried && cur.carried.includes(k));
+function uebernahmeEnde(k){ if(!istUebernommen(k)) return; cur.carried = cur.carried.filter(x=>x!==k); document.querySelectorAll(`[data-carry="${k}"]`).forEach(e=>e.remove()); }
+// Gleiche Arduino-Dateibezeichnung (gleicher Sensor) bereits in einer anderen Messung dieses Termins?
+function dateiDoppelt(k, wert){
+  const w=padNr(wert,4); if(!w || !cur) return null;
+  const m=messungenOfT(cur.tid).find(m=>m.id!==cur.id && padNr(m.data[k],4)===w);
+  if(!m) return null;
+  const o = m.oid!==cur.oid ? objekte.find(x=>x.id===m.oid) : null;
+  return (m.data.nummer||'?') + (o ? ' ('+(o.data.messobjekt||'anderes Objekt')+')' : '');
+}
 const TERMIN_KEYS = ['datum','windgeschwindigkeit','windrichtung','temperatur','firma','messleiter'];
 const OBJEKT_KEYS = ['messobjekt','zweck'];
 const COMPASS = [['NW','Nordwest'],['N','Nord'],['NO','Nordost'],['W','West'],['–','windstill'],['O','Ost'],['SW','Südwest'],['S','Süd'],['SO','Südost']];
@@ -384,6 +428,12 @@ const del = (s,k) => tx(s,'readwrite',st=>st.delete(k));
 const imgsOf = async mid => (await tx('bilder','readonly',st=>st.index('mid').getAll(mid))).sort((a,b)=>a.order-b.order);
 
 /* ---------- Hilfsfunktionen ---------- */
+// iOS-typisches Drei-Punkte-Symbol für „Mehr“
+const moreIcon = () => '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="19" cy="12" r="2" fill="currentColor"/></svg>';
+// iOS-typischer Doppelpfeil nach rechts (chevron.forward.2) für „Überspringen“
+const skipIcon = () => '<svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true"><path d="M3 4l7 7-7 7M10 4l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+// iOS-typischer Zurück-Pfeil
+const backIcon = () => '<svg width="13" height="22" viewBox="0 0 13 22" aria-hidden="true"><path d="M11 2L2 11l9 9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const $ = s => document.querySelector(s);
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
@@ -391,6 +441,14 @@ const pad = n => String(n).padStart(2,'0');
 function today(){ const d=new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
 function nowTime(){ const d=new Date(); return pad(d.getHours())+':'+pad(d.getMinutes()); }
 function fmtDate(iso){ if(!iso) return ''; const m=/^(\d{4})-(\d\d)-(\d\d)$/.exec(iso); return m? m[3]+'.'+m[2]+'.'+m[1] : iso; }
+// Überschrift im Bereich Messobjekt: „Gewindestange (02.10.)“
+function objektTitel(t, o){
+  const m=/^\d{4}-(\d\d)-(\d\d)$/.exec((t&&t.datum)||''), d = m ? m[2]+'.'+m[1]+'.' : '';
+  const n=String((o&&o.messobjekt)||'').trim() || 'Messobjekt';
+  return d ? n+' ('+d+')' : n;
+}
+// Überschrift im Bereich Messung: „02 - Gewindestange (02.10.)“
+function messungTitel(t, o, d){ const nr=String((d&&d.nummer)||'').trim(); return (nr ? nr+' - ' : '')+objektTitel(t,o); }
 function fmtTemp(v){ const t=String(v||'').trim(); return /^[-+−]?\d+([.,]\d+)?$/.test(t) ? t+' °C' : t; }
 function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2200); }
 function safeName(s){ return String(s||'').replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/Ä/g,'Ae').replace(/Ö/g,'Oe').replace(/Ü/g,'Ue').replace(/ß/g,'ss').replace(/[\\/:*?"<>|\s]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'').slice(0,60); }
@@ -532,9 +590,9 @@ async function showHome(){
   }).join('');
   $('#app').innerHTML = `<div class="wrap">
     <div class="bar"><h1>Messtermine</h1><button class="icon-btn" id="setBtn" aria-label="Einstellungen" style="font-size:24px">⚙︎</button></div>
-    <button class="btn primary" id="newBtn">Neuer Messtermin</button>
     ${termine.length?`<ul class="list">${items}</ul>`:`<div class="empty">Noch keine Messtermine.<br>Leg den ersten mit „Neuer Messtermin“ an.</div>`}
-  </div>`;
+  </div>
+  <div class="nav"><div class="inner"><button class="btn primary" id="newBtn">Neuer Messtermin</button></div></div>`;
   $('#newBtn').onclick = newTermin;
   enableSwipe();
   $('#setBtn').onclick = showSettings;
@@ -567,8 +625,8 @@ async function showTermin(){
         <span class="tag">${n} Messung${n===1?'':'en'}</span></button></div><button class="del-btn" tabindex="-1">Löschen</button></li>`;
   }).join('');
   $('#app').innerHTML = `<div class="wrap review">
-    <div class="bar"><button class="icon-btn" id="upBtn">Termine</button><h2>${esc(fmtDate(t.datum)||'Messtermin')}</h2><button class="icon-btn" id="moreBtn">Mehr</button></div>
-    <h3>Messtermin</h3>${rows}
+    <div class="bar"><button class="icon-btn back-btn" id="upBtn" aria-label="Zurück zu Termine">${backIcon()}</button><h2>${esc(fmtDate(t.datum)||'Messtermin')}</h2><button class="icon-btn more-btn" id="moreBtn" aria-label="Mehr">${moreIcon()}</button></div>
+    ${sektionen('t:'+termin.id, `<h3>Messtermin</h3>${rows}`)}
     <h3 style="margin-top:26px">Messobjekte</h3>
     ${os.length?`<ul class="list" style="margin-top:4px">${items}</ul>`:`<div class="empty">Noch kein Messobjekt in diesem Termin.</div>`}
   </div>
@@ -609,10 +667,10 @@ async function showObjekt(){
   const oImgs = await imgsOf(objekt.id);
   const rows = [['Messobjekt', o.messobjekt, 0], ['Zweck der Messung', o.zweck, 1]]
     .map(([l,v,i])=>`<button class="rv" data-ostep="${i}"><span class="k">${l}</span><span class="v ${v?'':'missing'}">${v?esc(v):'fehlt noch'}</span></button>`).join('')
-    + `<h3>Anregung und Skizze</h3>
+    + `<h4 class="sub">Anregung und Skizze</h4>
       <button class="rv" data-ostep="${OBJEKT_STEPS.length}"><span class="k">Art der Erregung</span><span class="v">${o.erregung?esc(o.erregung):'–'}</span></button>
       <button class="rv" data-ostep="${OBJEKT_STEPS.length+1}"><span class="k">Skizze und Fotos</span><span class="v">${oImgs.length?oImgs.length+' Bild'+(oImgs.length>1?'er':''):'–'}</span></button>`
-    + `<h3>Messsysteme</h3>` + (sysListe.length
+    + `<h4 class="sub">Messsysteme</h4>` + (sysListe.length
       ? sysListe.map(x=>{
           const sens=sensorenVon(x.id,o), du=val(o,'sys_'+x.id+'_dauer',SYS_CFG[x.id].dauer.def);
           const sTxt = SYS_CFG[x.id].sensorText ? sens.join('') : (sens.length ? 'Sensoren '+sens.join(', ') : 'keine Sensoren');
@@ -632,8 +690,8 @@ async function showObjekt(){
       </button></div>${selectMode?'':'<button class="del-btn" tabindex="-1">Löschen</button>'}</li>`;
   }).join('');
   $('#app').innerHTML = `<div class="wrap review">
-    <div class="bar"><button class="icon-btn" id="upBtn">Termin</button><h2>${esc(o.messobjekt||'Messobjekt')}</h2><button class="icon-btn" id="moreBtn">Mehr</button></div>
-    <h3>Messobjekt</h3>${rows}
+    <div class="bar"><button class="icon-btn back-btn" id="upBtn" aria-label="Zurück zu Termin">${backIcon()}</button><h2>${esc(objektTitel(termin.data, o))}</h2><button class="icon-btn more-btn" id="moreBtn" aria-label="Mehr">${moreIcon()}</button></div>
+    ${sektionen('o:'+objekt.id, `<h3>Messobjekt</h3>${rows}`)}
     <div class="bar" style="margin-top:22px"><h3 style="flex:1;margin:0">Messungen</h3>
       ${ms.length?`<button class="icon-btn" id="selBtn">${selectMode?'Fertig':'Auswählen'}</button>`:''}</div>
     ${ms.length?`<ul class="list" style="margin-top:4px">${items}</ul>`:`<div class="empty">Noch keine Messung an diesem Objekt.</div>`}
@@ -674,8 +732,12 @@ async function newMessung(){
   await refresh();
   const prev = messungenOfO(objekt.id).slice().sort((a,b)=>(b.created||0)-(a.created||0))[0];
   const d = { nummer: nextNumber(objekt.tid), uhrzeit: nowTime() };
-  if(prev) CARRY_OVER.forEach(k=>{ if(prev.data[k]) d[k]=prev.data[k]; });
-  cur = { id:uid(), tid:objekt.tid, oid:objekt.id, created:Date.now(), updated:Date.now(), data:d };
+  const carried=[];
+  if(prev) UEBERNAHME.forEach(k=>{
+    if(String(prev.data[k]||'').trim()){ d[k]=prev.data[k]; carried.push(k); }
+    ['_z','_e'].forEach(s=>{ if(prev.data[k+s]!==undefined) d[k+s]=prev.data[k+s]; });
+  });
+  cur = { id:uid(), tid:objekt.tid, oid:objekt.id, created:Date.now(), updated:Date.now(), data:d, carried };
   await put('messungen', cur);
   kind='messung'; step=0; showStep();
 }
@@ -705,9 +767,9 @@ async function showReview(){
     html += `<button class="rv" data-go="${i}"><span class="k">${esc(f.label||s.q)}</span><span class="v ${!v&&req?'missing':''}">${v?esc(v):(req?'fehlt noch':'–')}</span></button>`;
   }); });
   $('#app').innerHTML = `<div class="wrap review">
-    <div class="bar"><button class="icon-btn" id="upBtn">Objekt</button><h2>Messung ${esc(d.nummer||'')}</h2><button class="icon-btn" id="moreBtn">Mehr</button></div>
+    <div class="bar"><button class="icon-btn back-btn" id="upBtn" aria-label="Zurück zu Objekt">${backIcon()}</button><h2>${esc(messungTitel(t, o, d))}</h2><button class="icon-btn more-btn" id="moreBtn" aria-label="Mehr">${moreIcon()}</button></div>
     ${miss.length?`<p class="small" style="color:var(--danger)">${miss.length} Pflichtangabe${miss.length>1?'n':''} offen. Tippe auf eine Zeile, um sie zu ergänzen.</p>`:''}
-    ${html}
+    ${sektionen('m:'+cur.id, html)}
   </div>
   <div class="nav"><div class="inner">
     <button class="btn primary" id="nextMBtn">Nächste Messung</button></div></div>`;
@@ -777,6 +839,23 @@ async function loeschenNachFrage(typ, id){
   }
   return false;
 }
+
+/* ---------- Einklappbare Informationsblöcke ---------- */
+const offeneSektionen = new Set();   // bleibt während der Sitzung erhalten
+// Wandelt Abschnitte „<h3>Titel</h3> … Zeilen …“ in einklappbare Blöcke um (standardmäßig zu)
+function sektionen(prefix, html){
+  const teile = html.split(/<h3>(.*?)<\/h3>/);
+  let out = teile[0];
+  for(let i=1;i<teile.length;i+=2){
+    const titel=teile[i], inhalt=teile[i+1]||'', id=prefix+':'+titel;
+    const werte=[...inhalt.matchAll(/<span class="v[^"]*">([\s\S]*?)<\/span>/g)].map(m=>m[1].replace(/<[^>]+>/g,'').split('\n')[0].trim()).filter(x=>x && x!=='–' && x!=='fehlt noch');
+    const vorschau = werte.slice(0,3).join(', ');
+    out += `<details class="sek" data-sek="${esc(id)}" ${offeneSektionen.has(id)?'open':''}><summary><span class="st">${titel}</span><span class="sp">${vorschau}</span>
+      <svg class="chev" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>${inhalt}</details>`;
+  }
+  setTimeout(()=>document.querySelectorAll('details.sek').forEach(d=>d.ontoggle=()=>{ d.open?offeneSektionen.add(d.dataset.sek):offeneSektionen.delete(d.dataset.sek); }),0);
+  return out;
+}
 /* ---------- Abfrage (für Termin, Messobjekt und Messung) ---------- */
 function recentValues(k){
   const pool = ({termin:termine, objekt:objekte, messung:messungen})[kind];
@@ -795,6 +874,7 @@ function fieldHTML(f, single){
     const z=cur.data[f.k+'_z']||'', e=cur.data[f.k+'_e'] || (/ m$/.test(cur.data[f.k]||'') ? 'm' : (f.unitDef||'m'));
     h += `<div class="pos"><input class="inp" id="${id}" data-pos="${f.k}" data-def="${e}" value="${esc(z)}" inputmode="decimal" placeholder="0,00" enterkeyhint="next" autocomplete="off">
       <div class="seg"><button class="chip ${e==='m'?'on':''}" data-unit="${f.k}" data-val="m">m</button><button class="chip ${e==='l'?'on':''}" data-unit="${f.k}" data-val="l" aria-label="mal Länge l">· <i style="font-family:Georgia,serif">l</i></button></div></div>`;
+    if(f.quick) h += `<div class="chips">${f.quick.map(q=>`<button class="chip ${z===q&&e==='l'?'on':''}" data-quick="${f.k}" data-val="${q}">${q} · <i style="font-family:Georgia,serif">l</i></button>`).join('')}</div>`;
   } else if(f.chipsOnly){
     /* nur Auswahl per Antippen */
   } else {
@@ -806,6 +886,8 @@ function fieldHTML(f, single){
     h += `<div class="chips">${f.chips.map(c=>`<button class="chip ${(f.toggle?parts.includes(c):v===c)?'on':''}" data-${f.toggle?'tog':'set'}="${f.k}" data-val="${esc(c)}">${esc(c)}</button>`).join('')}</div>`;
   }
   if(f.hint) h += `<p class="muted small" style="margin:10px 0 0">${esc(f.hint)}</p>`;
+  if(istUebernommen(f.k)) h += `<p class="muted small" data-carry="${f.k}" style="margin:8px 0 0">↺ aus vorheriger Messung</p>`;
+  if(f.dupCheck){ const n=dateiDoppelt(f.k, v); h += `<p class="small dup-warn" data-warn="${f.k}" style="margin:8px 0 0; color:var(--danger)">${n?'Bereits vergeben in Messung '+esc(n)+' dieses Termins':''}</p>`; }
   if(f.recent){
     const r = recentValues(f.k).filter(x=>x!==v);
     if(r.length) h += `<div class="recent">Zuletzt verwendet</div><div class="chips">${r.map(c=>`<button class="chip" data-set="${f.k}" data-val="${esc(c)}">${esc(c.length>40?c.slice(0,40)+'…':c)}</button>`).join('')}</div>`;
@@ -817,7 +899,7 @@ async function showStep(){
   let STEPS = stepsOf(kind), s = STEPS[step];
   if(s && !s.images){ let neu=false; s.fields.forEach(f=>{ if(f.def!==undefined && cur.data[f.k]===undefined){ cur.data[f.k]=f.def; neu=true; } }); if(neu){ await saveCur(); STEPS=stepsOf(kind); s=STEPS[step]; } }
   const pct = Math.round(step/STEPS.length*100);
-  const tape = `<div class="tape"><div class="fill" style="width:${pct}%"></div><div class="ticks">${STEPS.map((x,i)=>`<button data-go="${i}" aria-label="Schritt ${i+1}: ${esc(x.q)}"></button>`).join('')}</div></div>`;
+  const tape = `<div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${STEPS.length}" aria-valuenow="${step+1}"><div class="progress-fill" style="width:${Math.round((step+1)/STEPS.length*100)}%"></div></div>`;
   let body;
   if(s.images){
     const imgs = await imgsOf(cur.id);
@@ -832,17 +914,18 @@ async function showStep(){
       + (s.today?`<button class="btn" id="todayBtn">Heute</button>`:'');
   }
   const last = step===STEPS.length-1;
-  const title = kind==='termin' ? 'Messtermin' : kind==='objekt' ? 'Messobjekt' : 'Messung '+(cur.data.nummer||'');
+  const title = kind==='termin' ? 'Messtermin' : kind==='objekt' ? objektTitel(termin&&termin.data, cur.data) : messungTitel(termin&&termin.data, objekt&&objekt.data, cur.data);
   $('#app').innerHTML = `<div class="wrap">
-    <div class="bar"><button class="icon-btn" id="upBtn">${({termin:'Termine', objekt:'Termin', messung:'Objekt'})[kind]}</button><h2>${esc(title)}</h2><button class="icon-btn" id="revBtn">Übersicht</button></div>
+    <div class="bar"><button class="icon-btn back-btn" id="upBtn" aria-label="Zurück zu ${({termin:'Terminen', objekt:'Termin', messung:'Objekt'})[kind]}">${backIcon()}</button><h2>${esc(title)}</h2><button class="icon-btn" id="revBtn">Übersicht</button></div>
     ${tape}
-    <p class="sec">${esc(s.sec)}, Schritt ${step+1} von ${STEPS.length}</p>
     <h1 class="q">${esc(s.q)}</h1>
     ${body}
   </div>
-  <div class="nav"><div class="inner">
-    <button class="btn back" id="backBtn" ${step===0?'disabled':''}>Zurück</button>
-    <button class="btn" id="skipBtn">Überspringen</button>
+  <div class="nav"><div class="inner wiz">
+    <div class="wiz-row">
+      <button class="link-btn" id="backBtn" ${step===0?'disabled':''} aria-label="Zurück zu ${esc(step>0?STEPS[step-1].q:'')}">${backIcon()}<span>${esc(step>0?STEPS[step-1].q:'')}</span></button>
+      <button class="link-btn right" id="skipBtn"><span>Überspringen</span>${skipIcon()}</button>
+    </div>
     <button class="btn primary" id="nextBtn">${last?({termin:'Fertig', objekt:'Fertig', messung:'Übersicht'})[kind]:'Weiter'}</button></div></div>`;
   bindStep(s);
   window.scrollTo(0,0);
@@ -855,31 +938,62 @@ function bindStep(s){
   $('#upBtn').onclick = ()=> kind==='termin' ? showHome() : kind==='objekt' ? showTermin() : showObjekt();
   $('#revBtn').onclick = finishWizard;
   $('#backBtn').onclick = ()=>{ if(step>0){ step--; saveCur(); showStep(); } };
-  $('#nextBtn').onclick = ()=>{ saveCur(); if(step<stepsOf(kind).length-1){ step++; showStep(); } else finishWizard(); };
+  $('#nextBtn').onclick = ()=>{
+    if(!s.images){
+      const doppelt = s.fields.filter(f=>f.dupCheck).map(f=>{ const n=dateiDoppelt(f.k, cur.data[f.k]); return n ? f.label+': '+padNr(cur.data[f.k],4)+' (Messung '+n+')' : null; }).filter(Boolean);
+      if(doppelt.length && !confirm('Diese Dateibezeichnung ist im Messtermin schon vergeben:\n'+doppelt.join('\n')+'\n\nTrotzdem weiter?')) return;
+    }
+    saveCur(); if(step<stepsOf(kind).length-1){ step++; showStep(); } else finishWizard(); };
+  // Arduino: Eintrag im ersten Feld gilt auch für die übrigen – solange diese nicht einzeln ausgefüllt wurden
+  if(!s.images){
+    const gruppe = s.fields.filter(f=>f.spiegel);
+    if(gruppe.length>1){
+      const erstes = gruppe[0], rest = gruppe.slice(1);
+      const v0 = String(cur.data[erstes.k]||'');
+      const eigen = new Set(rest.filter(f=>{ const v=String(cur.data[f.k]||''); return v && v!==v0; }).map(f=>f.k));
+      const spiegeln = ()=>{ const e0=document.querySelector(`.inp[data-k="${erstes.k}"]`); const v=e0?e0.value:(cur.data[erstes.k]||''); cur.data[erstes.k]=v; rest.forEach(f=>{ if(eigen.has(f.k)) return; cur.data[f.k]=v; const el=document.querySelector(`.inp[data-k="${f.k}"]`); if(el){ el.value=v; el.dispatchEvent(new Event('spiegel')); } }); scheduleSave(); };
+      const el0=document.querySelector(`.inp[data-k="${erstes.k}"]`);
+      if(el0){ el0.addEventListener('input',spiegeln); el0.addEventListener('blur',()=>setTimeout(spiegeln,0)); }
+      rest.forEach(f=>{ const el=document.querySelector(`.inp[data-k="${f.k}"]`); if(el) el.addEventListener('input',()=>{ if(el.value) eigen.add(f.k); else eigen.delete(f.k); }); });
+    }
+  }
+  // Doppelte Arduino-Dateibezeichnungen sofort beim Tippen anzeigen
+  document.querySelectorAll('.dup-warn').forEach(p=>{ const el=document.querySelector(`.inp[data-k="${p.dataset.warn}"]`); if(!el) return;
+    const upd=()=>{ const n=dateiDoppelt(p.dataset.warn, el.value); p.textContent = n ? 'Bereits vergeben in Messung '+n+' dieses Termins' : ''; };
+    el.addEventListener('input',upd); el.addEventListener('spiegel',upd); el.addEventListener('blur',()=>setTimeout(upd,0)); });
   // Seite leer lassen: Eingaben dieser Seite verwerfen und weiter (Bilder bleiben unangetastet)
   $('#skipBtn').onclick = ()=>{
     if(!s.images){
       const keys = s.fields.map(f=>f.k);
       const hat = keys.some(k=>String(cur.data[k]||'').trim());
       if(hat && !confirm('Angaben auf dieser Seite leeren und überspringen?')) return;
-      keys.forEach(k=>{ cur.data[k]=''; if(cur.data[k+'_z']!==undefined) cur.data[k+'_z']=''; });
+      keys.forEach(k=>{ uebernahmeEnde(k); cur.data[k]=''; if(cur.data[k+'_z']!==undefined) cur.data[k+'_z']=''; });
     }
     saveCur(); if(step<stepsOf(kind).length-1){ step++; showStep(); } else finishWizard();
   };
   document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{ step=+b.dataset.go; saveCur(); showStep(); });
   document.querySelectorAll('.inp[data-k]').forEach(el=>{
-    el.oninput = ()=>{ cur.data[el.dataset.k]=el.value; scheduleSave(); syncChips(el.dataset.k); };
+    el.oninput = ()=>{ uebernahmeEnde(el.dataset.k); cur.data[el.dataset.k]=el.value; scheduleSave(); syncChips(el.dataset.k); };
+    el.addEventListener('focus',()=>{ if(istUebernommen(el.dataset.k)) setTimeout(()=>{ try{ el.setSelectionRange(0, el.value.length); }catch(e){ el.select(); } },0); });
     if(el.tagName==='INPUT') el.onkeydown = e=>{ if(e.key==='Enter'){ e.preventDefault(); const all=[...document.querySelectorAll('.inp[data-k], .inp[data-pos]')]; const i=all.indexOf(el); if(i<all.length-1) all[i+1].focus(); else $('#nextBtn').click(); } };
   });
   document.querySelectorAll('.inp[data-pad]').forEach(el=>el.addEventListener('blur',()=>{ const p=padNr(el.value,+el.dataset.pad); if(p!==el.value){ el.value=p; cur.data[el.dataset.k]=p; scheduleSave(); } }));
   const setPos = k => { if(!cur.data[k+'_e']){ const el=document.querySelector(`[data-pos="${k}"]`); cur.data[k+'_e']=(el&&el.dataset.def)||'m'; } cur.data[k] = posText(cur.data[k+'_z'], cur.data[k+'_e']); scheduleSave(); };
   document.querySelectorAll('.inp[data-pos]').forEach(el=>{
-    el.oninput = ()=>{ const k=el.dataset.pos; cur.data[k+'_z']=el.value.replace(/[^0-9.,]/g,''); if(el.value!==cur.data[k+'_z']) el.value=cur.data[k+'_z']; setPos(k); };
+    el.addEventListener('focus',()=>{ if(istUebernommen(el.dataset.pos)) setTimeout(()=>{ try{ el.setSelectionRange(0, el.value.length); }catch(e){ el.select(); } },0); });
+    el.oninput = ()=>{ const k=el.dataset.pos; uebernahmeEnde(k); cur.data[k+'_z']=el.value.replace(/[^0-9.,]/g,''); if(el.value!==cur.data[k+'_z']) el.value=cur.data[k+'_z']; setPos(k); };
     el.onkeydown = e=>{ if(e.key==='Enter'){ e.preventDefault(); const all=[...document.querySelectorAll('.inp[data-k], .inp[data-pos]')]; const i=all.indexOf(el); if(i<all.length-1) all[i+1].focus(); else $('#nextBtn').click(); } };
   });
-  document.querySelectorAll('[data-unit]').forEach(b=>b.onclick=()=>{ const k=b.dataset.unit; cur.data[k+'_e']=b.dataset.val; document.querySelectorAll(`[data-unit="${k}"]`).forEach(x=>x.classList.toggle('on', x===b)); setPos(k); });
-  document.querySelectorAll('[data-set]').forEach(b=>b.onclick=()=>{ const k=b.dataset.set, val=b.dataset.val; cur.data[k] = cur.data[k]===val && b.classList.contains('on') ? '' : val; const inp=document.querySelector(`.inp[data-k="${k}"]`); if(inp) inp.value=cur.data[k]; scheduleSave(); syncChips(k); });
-  document.querySelectorAll('[data-tog]').forEach(b=>b.onclick=()=>{ const k=b.dataset.tog, val=b.dataset.val; let parts=String(cur.data[k]||'').split(',').map(x=>x.trim()).filter(Boolean); parts = parts.includes(val)?parts.filter(x=>x!==val):parts.concat(val); cur.data[k]=parts.join(', '); const inp=document.querySelector(`.inp[data-k="${k}"]`); if(inp) inp.value=cur.data[k]; scheduleSave(); syncChips(k); });
+  const syncQuick = k => document.querySelectorAll(`[data-quick="${k}"]`).forEach(x=>x.classList.toggle('on', cur.data[k+'_e']==='l' && cur.data[k+'_z']===x.dataset.val));
+  document.querySelectorAll('[data-quick]').forEach(b=>b.onclick=()=>{ const k=b.dataset.quick; uebernahmeEnde(k);
+    cur.data[k+'_z']=b.dataset.val; cur.data[k+'_e']='l';
+    const el=document.querySelector(`[data-pos="${k}"]`); if(el) el.value=b.dataset.val;
+    document.querySelectorAll(`[data-unit="${k}"]`).forEach(x=>x.classList.toggle('on', x.dataset.val==='l'));
+    setPos(k); syncQuick(k); });
+  document.querySelectorAll('.inp[data-pos]').forEach(el=>el.addEventListener('input',()=>syncQuick(el.dataset.pos)));
+  document.querySelectorAll('[data-unit]').forEach(b=>b.onclick=()=>{ const k=b.dataset.unit; uebernahmeEnde(k); cur.data[k+'_e']=b.dataset.val; document.querySelectorAll(`[data-unit="${k}"]`).forEach(x=>x.classList.toggle('on', x===b)); setPos(k); });
+  document.querySelectorAll('[data-set]').forEach(b=>b.onclick=()=>{ const k=b.dataset.set, val=b.dataset.val; const neu=istUebernommen(k); uebernahmeEnde(k); cur.data[k] = !neu && cur.data[k]===val && b.classList.contains('on') ? '' : val; const inp=document.querySelector(`.inp[data-k="${k}"]`); if(inp) inp.value=cur.data[k]; scheduleSave(); syncChips(k); });
+  document.querySelectorAll('[data-tog]').forEach(b=>b.onclick=()=>{ const k=b.dataset.tog, val=b.dataset.val; let parts=String(cur.data[k]||'').split(',').map(x=>x.trim()).filter(Boolean); if(istUebernommen(k)){ uebernahmeEnde(k); parts=[val]; } else parts = parts.includes(val)?parts.filter(x=>x!==val):parts.concat(val); cur.data[k]=parts.join(', '); const inp=document.querySelector(`.inp[data-k="${k}"]`); if(inp) inp.value=cur.data[k]; scheduleSave(); syncChips(k); });
   $('#nowBtn') && ($('#nowBtn').onclick = ()=>{ cur.data.uhrzeit=nowTime(); scheduleSave(); showStep(); });
   $('#todayBtn') && ($('#todayBtn').onclick = ()=>{ cur.data.datum=today(); scheduleSave(); showStep(); });
   if(s.images){
@@ -910,7 +1024,7 @@ function sheet(inner, onAction){
 function showSettings(){
   const inp=(id,val,area)=> area?`<textarea class="inp" id="${id}">${esc(val)}</textarea>`:`<input class="inp" id="${id}" value="${esc(val)}">`;
   $('#app').innerHTML=`<div class="wrap review">
-    <div class="bar"><button class="icon-btn" id="homeBtn">Termine</button><h2>Standardwerte</h2><span style="min-width:44px"></span></div>
+    <div class="bar"><button class="icon-btn back-btn" id="homeBtn" aria-label="Zurück zu Terminen">${backIcon()}</button><h2>Standardwerte</h2><span style="min-width:44px"></span></div>
     <p class="muted small">Firma und Messleiter werden bei jedem neuen Messtermin vorausgefüllt. Die Gerätedaten der Messsysteme landen im Bericht unter „Messgeräte“, je nachdem, welche Systeme beim Termin ausgewählt sind.</p>
     <h3>Institution</h3>
     <div class="field"><label for="s_firma">Firma</label>${inp('s_firma',settings.firma)}</div>
@@ -943,9 +1057,9 @@ function reportFields(m){
   return { nummer:d.nummer, datum:fmtDate(t.datum), uhrzeit:d.uhrzeit,
     windgeschwindigkeit:t.windgeschwindigkeit, windrichtung:t.windrichtung, temperatur:fmtTemp(t.temperatur),
     firma:t.firma, messleiter:t.messleiter,
-    zweck:o.zweck, messobjekt:o.messobjekt, ...geraeteFelder(t,d),
+    zweck:o.zweck, messobjekt:[o.messobjekt, o.objekt_notizen, d.mess_notizen].filter(x=>String(x||'').trim()).join('\n'), ...geraeteFelder(t,d),
     ...sensorFelder(t,o,d), erregung:erregungText(o,d),
-    ergaenzungen: lines([['Personenanzahl',d.personen],['Gewicht',d.gewicht],['Erkennbare Quellen',d.amb_quellen],
+    ergaenzungen: lines([['Zugkraft',zugkraftText(d.zugkraft)],['Personenanzahl',d.personen],['Gewicht',d.gewicht],['Erkennbare Quellen',d.amb_quellen],
       ['Impulshammer',d.hammer_typ],['Anschlagpunkt Impulshammer',d.hammer_ort],['Hammerspitze',d.hammer_spitze]], d.ergaenzungen_sonst),
     notizen: lines([['Spürbarkeit',d.spuerbarkeit],['Sekundäreffekte',d.sekundaer]], d.notizen_sonst) };
 }
