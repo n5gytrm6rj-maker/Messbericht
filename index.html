@@ -27,6 +27,8 @@
   :root{--bg:#000000; --panel:#1c1c1e; --fill:#1c1c1e; --ink:#ffffff; --muted:#98989f; --line:#38383a; --steel:#8fb8d6; --danger:#ff6961; --ok:#7fd1a0;}
 }
 *,*::before,*::after{box-sizing:inherit}
+/* Inhalte von aufklappbaren Bereichen erben box-sizing nicht zuverlässig */
+details *, details *::before, details *::after, .inp{box-sizing:border-box}
 html{height:100%; scroll-padding-top:env(safe-area-inset-top,0px); -webkit-text-size-adjust:100%}
 body{margin:0; min-height:100%; background:var(--bg); color:var(--ink); font-size:17px; line-height:1.4; -webkit-tap-highlight-color:transparent}
 button,input,textarea,select{font:inherit; color:inherit}
@@ -172,11 +174,12 @@ body.kb .nav{display:none}
 .chips.stack.noic .chip + .chip::before{left:16px}
 .inp + .chips.stack{margin-top:12px}
 .chips.stack .srow{cursor:pointer; gap:6px}
-.sname{border:0; background:none; font:inherit; color:inherit; width:6ch; padding:4px 2px; border-bottom:1px dashed var(--line); border-radius:0}
-.sname:focus{outline:none; border-bottom-color:var(--steel)}
+.sname{border:1.5px solid var(--line); background:#fff; font:inherit; color:inherit; width:7ch; padding:6px 10px; border-radius:8px; margin-left:4px}
+@media (prefers-color-scheme: dark){.sname{background:#2c2c2e}}
+.sname:focus{outline:none; border-color:var(--steel)}
 /* Systemsymbol als App-Icon neben der Überschrift */
 .q-row{display:flex; align-items:center; justify-content:space-between; gap:14px; margin:14px 0 18px}
-.q-row .q{margin:0; min-width:0; -webkit-hyphens:auto; hyphens:auto; overflow-wrap:break-word}
+.q-row .q{margin:0; min-width:0; -webkit-hyphens:manual; hyphens:manual; overflow-wrap:normal}
 .wm{flex:none; width:72px; height:72px; border-radius:17px; border:2px solid var(--steel); background:rgba(44,88,119,.06); color:var(--steel); opacity:.45; display:grid; place-items:center; pointer-events:none}
 .wm svg{width:46px; height:46px}
 .wm svg *{stroke-width:1.4}
@@ -254,7 +257,43 @@ summary.ex-pick.alle .ex-lbl{color:var(--muted)}
 details.sek.hat-fehlt > summary .st{color:var(--danger)}
 .big-title{font-size:32px; font-weight:700; letter-spacing:-.01em; margin:10px 0 6px}
 .plist.aus{opacity:.4}
-summary.nav-sum .st{text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:4px}
+/* Alle Bereichstitel als Kapsel, einheitliche Höhe – kein Sprung beim Seitenwechsel */
+.sek-static .sum{display:flex; align-items:center; padding:8px 0; min-height:52px; border-bottom:1px solid var(--line)}
+.sek-static .st{font-size:15px; font-weight:650}
+details.sek > summary .st, .sek-static .st{display:inline-flex; align-items:center; height:36px; padding:0 16px; border-radius:18px; background:var(--fill)}
+details.sek > summary{padding-top:8px !important; padding-bottom:8px !important; min-height:52px}
+summary.nav-sum .st:active{background:var(--line)}
+.item .num{min-width:2em}
+.lvl .item .tag{font-size:11px; padding:2px 6px}
+.item .main{flex:1 1 auto}
+/* Trennlinie unter den Listentiteln beginnt an der Vorderkante des Titels */
+#oListe > summary, #tListe > summary{border-bottom:1px solid var(--line)}
+.lvl > .list{border-top:0}
+/* Aufgeklappte Messung direkt in der Liste */
+.item.offen .front{background:var(--fill)}
+.list .mdetail{list-style:none; padding:2px 0 12px 16px; border-bottom:1px solid var(--line)}
+.mdetail h4.sub{font-size:13px; font-weight:650; color:var(--muted); margin:14px 0 2px}
+.maktion{display:flex; justify-content:flex-start; margin-top:8px}
+.maktion .link-btn{flex:0 1 auto; padding-left:0; font-size:15px}
+.maktion .link-btn span{white-space:normal; text-align:left}
+#msTitel{border:0; color:var(--ink); font:inherit; font-size:15px; font-weight:650; cursor:pointer}
+#msTitel:active{background:var(--line)}
+@keyframes einblenden{from{opacity:0; transform:translateY(-4px)} to{opacity:1; transform:none}}
+.list .mdetail{animation:einblenden .18s ease-out}
+/* Innerhalb einer aufgeklappten Messung keine Trennlinien zwischen den Zeilen */
+.mdetail .rv{border-bottom:0; padding-top:7px; padding-bottom:7px}
+.mdetail h4.sub{border-top:1px solid var(--line); padding-top:12px; margin-top:6px}
+.list .mdetail{border-bottom:0}
+.rv.nolinie{border-bottom:0; padding-bottom:4px}
+.rv.nolinie + .rv{padding-top:4px}
+.rv .k{min-width:0; -webkit-hyphens:auto; hyphens:auto; overflow-wrap:break-word}
+details.sek h4.sub.mit-linie{border-bottom:1px solid var(--line); padding-bottom:8px; margin-bottom:0}
+.mdetail .gruppe-linie{border-top:1px solid var(--line); margin:6px 0}
+/* Runder Knopf „Neue Messung“ unten rechts (3,5 × die 36-px-Kreise) */
+.fab{position:fixed; --fab-abstand:calc(16px + max(env(safe-area-inset-bottom,0px), 16px)); right:var(--fab-abstand); bottom:var(--fab-abstand); width:126px; height:126px; border-radius:50%; border:0; background:var(--signal); color:var(--signal-ink); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; box-shadow:0 6px 18px rgba(0,0,0,.22); z-index:12}
+.fab span{font-size:17px; font-weight:700}
+.fab:active{transform:scale(.96)}
+body.kb .fab{display:none}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 </head>
@@ -469,7 +508,7 @@ const ERREGUNG_SEITEN = {
   'Ambient Vibration': {sec:'Anregung', q:'Ambient Vibration', fields:[
     {k:'amb_quellen', label:'Erkennbare Quellen', type:'text', toggle:true, ph:'weitere Quellen', chips:['Wind','Verkehr','Fußgänger','Maschinen','Bauarbeiten']}]},
   'Impulshammer': {sec:'Anregung', q:'Impulshammer', fields:[
-    {k:'hammer_typ', label:'Hammer (Masse oder Größe)', type:'text', ph:'z. B. 0,32 kg', chips:['klein','mittel','groß'], recent:true},
+    {k:'hammer_typ', label:'Impulshammer', type:'text', ph:'z. B. 0,32 kg', chips:['klein','mittel','groß'], recent:true},
     {k:'hammer_ort', label:'Anschlagpunkt', type:'pos', quick:['0,25','0,33','0,50']},
     {k:'hammer_spitze', label:'Hammerspitze', type:'text', chips:['Gummi','Kunststoff','Stahl']}]}
 };
@@ -487,7 +526,7 @@ function vorigeMessung(){
 function arduinoSeite(){
   if(!termin || !objekt || !systemeVon(termin.data).some(x=>x.id==='arduino')) return [];
   const sens=sensorenVon('arduino', objekt.data); if(!sens.length) return [];
-  return [{sec:'Arduino', q:'Dateibezeichnungen', sys:'arduino', dateiListe:true, fields:sens.map(nr=>
+  return [{sec:'Arduino', q:'Datei\u00ADbezeichnungen', sys:'arduino', dateiListe:true, fields:sens.map(nr=>
     ({k:'ard_datei_'+nr, label:'Sensor '+nr, nr, type:'text', mode:'numeric', ph:'0000', pad:4, dupCheck:true, spiegel:'ard_datei'}))}];
 }
 // Eingabe wie an der Kasse: 8 → 0008, dann 1 → 0081 (immer 4-stellig)
@@ -497,8 +536,8 @@ function dateiFormat(v){ let d=String(v||'').replace(/\D/g,'').replace(/^0+/,'')
 const mitZugkraft = o => String((o&&o.zweck)||'').includes('Zugkraftermittlung');
 function ersteSeite(){
   const zug = mitZugkraft(objekt&&objekt.data);
-  const notiz = {k:'mess_notizen', label:'Notizen', type:'textarea', ph:'oder frei eingeben', toggle:true, chips:['Grundstab II','Grundstab III','Grundstab IV']};
-  return {sec:'Messung', q: 'Systembeschreibung', fields: zug ? [{k:'zugkraft', label:'Zugkraft in kN', type:'text', mode:'decimal', ph:'z. B. 12,5'}, notiz] : [notiz]};
+  const notiz = {k:'mess_notizen', label:'Systembeschreibung', type:'textarea', ph:'oder frei eingeben', toggle:true, chips:['Grundstab II','Grundstab III','Grundstab IV']};
+  return {sec:'Messung', q: 'System', fields: zug ? [{k:'zugkraft', label:'Zugkraft in kN', type:'text', mode:'decimal', ph:'z. B. 12,5'}, notiz] : [notiz]};
 }
 function messungSteps(){ return [ersteSeite()].concat(erregungenVon(objekt&&objekt.data).map(e=>ERREGUNG_SEITEN[e]), [NOTIZ_SEITE], arduinoSeite()); }
 function zugkraftText(v){ const t=normDez(v); return t ? (/^[-+]?\d+(,\d+)?$/.test(t) ? t+' kN' : t) : ''; }
@@ -566,9 +605,11 @@ const moreIcon = () => '<svg width="24" height="24" viewBox="0 0 24 24" aria-hid
 // iOS-typischer Doppelpfeil nach rechts (chevron.forward.2) für „Überspringen“
 const skipIcon = () => '<svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true"><path d="M3 4l7 7-7 7M10 4l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 // Symbol „Sichern“ (Ordner mit Pfeil)
-const saveIcon = () => '<svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true"><path d="M2.5 6.5a1.5 1.5 0 0 1 1.5-1.5h4l2 2h6a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 16 18H4a1.5 1.5 0 0 1-1.5-1.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10 9.5v6M7.5 13l2.5 2.5 2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const saveIcon = () => '<svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true"><path d="M2 5.5A1.5 1.5 0 0 1 3.5 4h4.5l2 2.5h6.5A1.5 1.5 0 0 1 18 8v10a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 2 18z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10 9.5v7M7.2 13.8l2.8 2.8 2.8-2.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 // Symbol „Importieren“ (Pfeil in Ablage)
 const importIcon = () => '<svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true"><path d="M10 3v10M6.5 9.5L10 13l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 13v3.5A1.5 1.5 0 0 0 4.5 18h11a1.5 1.5 0 0 0 1.5-1.5V13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+// Symbol „Verschieben“ (Ordner mit Pfeil nach rechts)
+const moveIcon = () => '<svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true"><path d="M2 5.5A1.5 1.5 0 0 1 3.5 4h4.5l2 2.5h6.5A1.5 1.5 0 0 1 18 8v10a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 2 18z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M6 13.2h7.5M10.5 10.2l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 // iOS-typischer Zurück-Pfeil
 const backIcon = () => '<svg width="13" height="22" viewBox="0 0 13 22" aria-hidden="true"><path d="M11 2L2 11l9 9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const $ = s => document.querySelector(s);
@@ -705,9 +746,9 @@ function pflichtFehlendKeys(t, o, d){
     if(sens.some(nr=>leer(posWert(o,ortKey(x.id,nr))))) add('sys:'+x.id+':ort', x.name+': Sensorort');
   }
   if(mitZugkraft(o) && leer(d.zugkraft)) add('zugkraft','Zugkraft');
-  if(leer(d.mess_notizen)) add('mess_notizen','Notizen');
+  if(leer(d.mess_notizen)) add('mess_notizen','Systembeschreibung');
   if(erregungenVon(o).includes('Impulshammer')){
-    if(leer(d.hammer_typ)) add('hammer_typ','Hammer');
+    if(leer(d.hammer_typ)) add('hammer_typ','Impulshammer');
     if(leer(posWert(d,'hammer_ort'))) add('hammer_ort','Anschlagpunkt');
     if(leer(d.hammer_spitze)) add('hammer_spitze','Hammerspitze');
   }
@@ -831,6 +872,7 @@ function openDraw(){
 
 /* ---------- Startseite: Messtermine ---------- */
 async function showHome(){
+  letzteAnsicht='';
   await leave(); termin=null; objekt=null; selectMode=false; selected.clear();
   await refresh();
   const items = termine.map(t=>{
@@ -846,7 +888,7 @@ async function showHome(){
     <input type="file" id="importIn" accept=".json,application/json" hidden>
     <details class="sek" id="tListe" ${zuListen.has('home')?'':'open'}><summary><span class="st">Messtermine</span>
       <svg class="chev" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
-      ${termine.length?`<ul class="list" style="margin-top:0">${items}</ul>`:`<div class="empty">Noch keine Messtermine.<br>Leg den ersten mit „Neuer Messtermin“ an.</div>`}
+      <div class="lvl">${termine.length?`<ul class="list" style="margin-top:0">${items}</ul>`:`<div class="empty">Noch keine Messtermine.<br>Leg den ersten mit „Neuer Messtermin“ an.</div>`}</div>
     </details>
   </div>
   <div class="nav"><div class="inner"><button class="btn primary" id="newBtn">Neuer Messtermin</button></div></div>`;
@@ -873,6 +915,7 @@ async function newTermin(){
 
 /* ---------- Messtermin: Rahmendaten + Messobjekte ---------- */
 async function showTermin(){
+  letzteAnsicht='';
   await leave(); objekt=null;
   await refresh();
   termin = termine.find(t=>t.id===termin.id);
@@ -888,11 +931,11 @@ async function showTermin(){
   }).join('');
   $('#app').innerHTML = `<div class="wrap review">
     <div class="bar"><button class="icon-btn back-btn" id="upBtn" aria-label="Zurück zu Termine">${backIcon()}</button><h2>${esc(t.name||fmtDate(t.datum)||'Messtermin')}</h2><button class="icon-btn more-btn" id="moreBtn" aria-label="Mehr">${moreIcon()}</button></div>
-    ${sektionen('t:'+termin.id, `<h3>Messtermin</h3>${rows}`)}
+    ${sektionen('t:'+termin.id, `<h3>Messtermine</h3>${rows}`)}
     <div class="lvl">
       <details class="sek" id="oListe" ${zuListen.has('ol:'+termin.id)?'':'open'}><summary><span class="st">Messobjekte</span>
         <svg class="chev" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
-        ${os.length?`<ul class="list" style="margin-top:0">${items}</ul>`:`<div class="empty">Noch kein Messobjekt in diesem Termin.</div>`}
+        <div class="lvl">${os.length?`<ul class="list" style="margin-top:0">${items}</ul>`:`<div class="empty">Noch kein Messobjekt in diesem Termin.</div>`}</div>
       </details>
     </div>
   </div>
@@ -922,6 +965,7 @@ async function newObjekt(){
 
 /* ---------- Messobjekt: Angaben + Messungen ---------- */
 async function showObjekt(){
+  const scrollY0 = window.scrollY, gleicheSeite = letzteAnsicht===('objekt:'+(objekt&&objekt.id));
   await leave(); await refresh();
   objekt = objekte.find(o=>o.id===objekt.id);
   if(!objekt) return showTermin();
@@ -931,40 +975,42 @@ async function showObjekt(){
   const oImgs = await imgsOf(objekt.id);
   const fo = fehlSet(termin.data, o, {});
   const rows = objektZeilen(o, oImgs, sysListe, fo);
-  const items = ms.map(m=>{
+  // Ist eine Messung aufgeklappt, werden die übrigen ausgeblendet
+  if(offeneMessung && !ms.some(m=>m.id===offeneMessung)) offeneMessung=null;
+  const sichtbar = (offeneMessung && !selectMode) ? ms.filter(m=>m.id===offeneMessung) : ms;
+  const items = sichtbar.map(m=>{
     const d=m.data, miss=pflichtFehlend(termin.data, objekt.data, d).length, on=selected.has(m.id);
-    return `<li class="item ${selectMode?'':'swipe'}" data-del="messung" data-id="${m.id}"><div class="front">
+    return `<li class="item ${selectMode?'':'swipe'} ${m.id===offeneMessung&&!selectMode?'offen':''}" data-del="messung" data-id="${m.id}"><div class="front">
       ${selectMode?`<button class="check ${on?'on':''}" data-sel="${m.id}" aria-label="Auswählen">${on?'✓':''}</button>`:''}
       <button class="open" data-open="${m.id}">
         <span class="num">${esc(d.nummer||'–')}</span>
-        <span class="main"><span class="title">${esc(d.uhrzeit||'')} Uhr</span>
+        <span class="main"><span class="title">${esc(d.uhrzeit||'')}</span>
         <span class="meta">${esc([zugkraftText(d.zugkraft)?'Zugkraft '+zugkraftText(d.zugkraft):'', d.mess_notizen].filter(Boolean).join(', '))}</span></span>
         ${miss?'<span class="tag warn">unvollständig</span>':''}
-      </button></div>${selectMode?'':'<button class="del-btn" tabindex="-1">Löschen</button>'}</li>`;
+      </button></div>${selectMode?'':'<button class="del-btn" tabindex="-1">Löschen</button>'}</li>${!selectMode && m.id===offeneMessung ? `<li class="mdetail">${messungDetailHTML(m)}</li>` : ''}`;
   }).join('');
   $('#app').innerHTML = `<div class="wrap review">
     <div class="bar"><button class="icon-btn back-btn" id="upBtn" aria-label="Zurück zu Termin">${backIcon()}</button><h2>${esc(objektTitel(termin.data, o))}</h2><button class="icon-btn more-btn" id="moreBtn" aria-label="Mehr">${moreIcon()}</button></div>
-    ${sektionen('t:'+termin.id, `<h3>Messtermin</h3>${terminZeilen(termin.data, fo)}`)}
+    ${sektionen('t:'+termin.id, `<h3>Messtermine</h3>${terminZeilen(termin.data, fo)}`)}
     <div class="lvl">
-      ${sektionen('o:'+objekt.id, `<h3>Messobjekt</h3>${rows}`)}
+      ${sektionen('o:'+objekt.id, `<h3>Messobjekte</h3>${rows}`)}
       <div class="lvl">
-        <details class="sek" id="msListe" ${zuListen.has(objekt.id)?'':'open'}><summary><span class="st">Messungen</span>
-          <svg class="chev" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
-          ${ms.length?`<ul class="list" style="margin-top:0">${items}</ul>`:`<div class="empty">Noch keine Messung an diesem Objekt.</div>`}
-        </details>
+        <div class="sek-static"><div class="sum"><button class="st" id="msTitel">Messungen</button></div>
+          <div class="lvl">${ms.length?`<ul class="list" style="margin-top:0">${items}</ul>`:`<div class="empty">Noch keine Messung an diesem Objekt.</div>`}</div>
+        </div>
       </div>
     </div>
   </div>
-  <div class="nav"><div class="inner">
-    ${selectMode
-      ? exportNav()
-      : `<button class="btn primary" id="newMBtn">Neue Messung</button>`}
-  </div></div>`;
+  ${selectMode
+    ? `<div class="nav"><div class="inner">${exportNav()}</div></div>`
+    : `<button class="fab" id="newMBtn" aria-label="Neue Messung"><svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 8v24M8 20h24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round"/></svg><span>Messung</span></button>`}`;
   $('#upBtn').onclick = ()=>{ showTermin(); };
   exportBinden(showObjekt);
   textZuUebersicht();
+  messungDetailBinden(ms);
+  $('#msTitel').onclick = ()=>{ if(selectMode) return; offeneMessung=null; showObjekt(); };
+  const offen=document.querySelector('.mdetail'); if(offen && sprungZuOffen){ sprungZuOffen=false; }
   enableSwipe();
-  $('#msListe').ontoggle = e=>{ e.target.open ? zuListen.delete(objekt.id) : zuListen.add(objekt.id); };
   document.querySelectorAll('[data-tstep]').forEach(b=>b.onclick=()=>{ objektKontext=true; einzelEdit=showObjekt; cur=termin; kind='termin'; step=+b.dataset.tstep; showStep(); });
   document.querySelectorAll('[data-ostep]').forEach(b=>b.onclick=()=>{ einzelEdit=showObjekt; cur=objekt; kind='objekt'; step=+b.dataset.ostep; showStep(); });
   $('#newMBtn') && ($('#newMBtn').onclick = newMessung);
@@ -975,13 +1021,17 @@ async function showObjekt(){
   document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{
     const id=b.dataset.open;
     if(selectMode){ selected.has(id)?selected.delete(id):selected.add(id); showObjekt(); return; }
-    cur=ms.find(m=>m.id===id); kind='messung'; showReview();
+    offeneMessung = offeneMessung===id ? null : id; showObjekt();
   });
   $('#moreBtn').onclick = ()=>popMenu(null, geheZu('objekt').concat([
     {icon:shareIcon(), label:'Daten exportieren', disabled:!messungenOfT(termin.id).length, run:()=>exportStarten(showObjekt, [])},
+    ...(offeneMessung && ms.some(m=>m.id===offeneMessung) ? [{icon:moveIcon(), label:'Messung verschieben', disabled:objekteOf(termin.id).length<2, run:()=>{ const m=messungen.find(x=>x.id===offeneMessung); if(m) messungVerschieben(m); }}] : []),
+    ...(offeneMessung && ms.some(m=>m.id===offeneMessung) ? [] : [{icon:moveIcon(), label:'Messobjekt verschieben', disabled:termine.length<2, run:()=>objektVerschieben(objekt)}]),
     {icon:trashIcon(), label:'Messobjekt löschen', danger:true, run:()=>loeschenNachFrage('objekt', objekt.id)}
   ]));
-  window.scrollTo(0,0);
+  // Beim Auf-/Zuklappen einer Messung auf derselben Seite nicht nach oben springen
+  letzteAnsicht='objekt:'+objekt.id;
+  window.scrollTo(0, gleicheSeite ? Math.min(scrollY0, Math.max(0, document.documentElement.scrollHeight - window.innerHeight)) : 0);
 }
 
 async function newMessung(){
@@ -1000,39 +1050,32 @@ async function newMessung(){
 }
 
 /* ---------- Übersicht einer Messung ---------- */
-async function showReview(){
-  const d=cur.data, t=termin.data, o=objekt.data, fm=fehlSet(t, o, d);
-  const oImgs=await imgsOf(objekt.id), sysListe=systemeVon(t);
+// Die Angaben einer Messung klappen direkt unter der Messung in der Liste auf
+let offeneMessung=null, sprungZuOffen=false;
+async function showReview(){ if(cur && cur.oid) offeneMessung=cur.id; return showObjekt(); }
+
+function messungDetailHTML(m){
+  const d=m.data, fm=fehlSet(termin.data, objekt.data, d);
   const titelVon = s => s.sec==='Messung' ? 'Systembeschreibung' : s.sec;
-  let mHtml = `<button class="rv" data-korr="nummer"><span class="k">Nummer</span><span class="v">${esc(d.nummer)}</span></button>
-    <button class="rv" data-korr="uhrzeit"><span class="k">Uhrzeit</span><span class="v">${esc(d.uhrzeit)} Uhr</span></button>`;
+  let h = `<button class="rv" data-korr="nummer" data-mid="${m.id}"><span class="k">Nummer</span><span class="v">${esc(d.nummer)}</span></button>
+    <button class="rv" data-korr="uhrzeit" data-mid="${m.id}"><span class="k">Uhrzeit</span><span class="v">${esc(d.uhrzeit)} Uhr</span></button>`;
   let lastSec='';
   messungSteps().forEach((s,i)=>{ if(s.images) return; s.fields.forEach(f=>{
-    if(titelVon(s)!==lastSec){ mHtml+=`<h4 class="sub">${esc(titelVon(s))}</h4>`; lastSec=titelVon(s); }
-    const v=f.type==='pos' ? posWert(d,f.k) : (f.pad ? padNr(d[f.k],4) : (d[f.k]||'')), req=REQUIRED_M.includes(f.k);
-    if(f.spiegel && d.ard_keine){ if(f.k===s.fields[0].k) mHtml += `<button class="rv" data-go="${i}"><span class="k">Dateibezeichnung</span><span class="v">keine Messung erfolgt</span></button>`; return; }
-    const anzeige = f.spiegel && v ? f.nr+'-'+v : v;
-    mHtml += `<button class="rv ${fm.has(f.k)?'fehlt':''}" data-go="${i}"><span class="k">${esc(f.spiegel ? 'Dateibezeichnung' : (f.label||s.q))}</span><span class="v">${anzeige?esc(anzeige):(fm.has(f.k)?'fehlt':'–')}</span></button>`;
+    if(titelVon(s)!==lastSec){ h+=`<div class="gruppe-linie"></div>`; lastSec=titelVon(s); }
+    const v=f.type==='pos' ? posWert(d,f.k) : (f.pad ? padNr(d[f.k],4) : (d[f.k]||''));
+    if(f.spiegel && d.ard_keine){ if(f.k===s.fields[0].k) h += `<button class="rv" data-go="${i}" data-mid="${m.id}"><span class="k">Arduino</span><span class="v">keine Messung erfolgt</span></button>`; return; }
+    const anzeige = f.spiegel && v ? f.nr+'-'+v : f.k==='zugkraft' ? zugkraftText(v) : v;
+    h += `<button class="rv ${fm.has(f.k)?'fehlt':''}" data-go="${i}" data-mid="${m.id}"><span class="k">${esc(f.spiegel ? 'Arduino '+f.nr : f.k==='zugkraft' ? 'Zugkraft' : (f.label||s.q))}</span><span class="v">${anzeige?esc(anzeige):(fm.has(f.k)?'fehlt':'–')}</span></button>`;
   }); });
-  const chev = '<svg class="chev" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  const html = `${sektionen('t:'+termin.id, `<h3>Messtermin</h3>${terminZeilen(t, fm)}`)}
-    <div class="lvl">
-      ${sektionen('o:'+objekt.id, `<h3>Messobjekt</h3>${objektZeilen(o, oImgs, sysListe, fm)}`)}
-      <div class="lvl">
-        <details class="sek ${fm.size&&[...fm].some(k=>!['name','datum','messleiter','systeme','messobjekt','zweck','erregung'].includes(k)&&!k.startsWith('sys:'))?'hat-fehlt':''}" id="mDetails" ${zuListen.has('m:'+cur.id)?'':'open'}><summary><span class="st">Messung ${esc(d.nummer||'')}</span>${chev}</summary>${mHtml}</details>
-      </div>
-    </div>`;
-  $('#app').innerHTML = `<div class="wrap review">
-    <div class="bar"><button class="icon-btn back-btn" id="upBtn" aria-label="Zurück zu Objekt">${backIcon()}</button><h2>${esc(messungTitel(t, o, d))}</h2><button class="icon-btn more-btn" id="moreBtn" aria-label="Mehr">${moreIcon()}</button></div>
-    ${html}
-  </div>
-  <div class="nav"><div class="inner wiz">
-    <button class="btn" id="exportBtn">Daten exportieren</button>
-    <button class="btn primary" id="nextMBtn">Nächste Messung</button></div></div>`;
-  $('#upBtn').onclick=showObjekt;
-  $('#nextMBtn').onclick=async()=>{ await saveCur(); newMessung(); };
+  return h;
+}
+function messungDetailBinden(ms){
+  const zurueck = id => ()=>{ offeneMessung=id; cur=null; showObjekt(); };
+  document.querySelectorAll('[data-go][data-mid]').forEach(b=>b.onclick=()=>{ const m=ms.find(x=>x.id===b.dataset.mid); if(!m) return; cur=m; kind='messung'; einzelEdit=zurueck(m.id); step=+b.dataset.go; showStep(); });
+  document.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>{ const m=ms.find(x=>x.id===b.dataset.move); if(m) messungVerschieben(m); });
   // Nachträgliche Korrektur von Nummer und Uhrzeit (keine reguläre Abfrage)
-  document.querySelectorAll('[data-korr]').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('[data-korr][data-mid]').forEach(b=>b.onclick=()=>{
+    const m=ms.find(x=>x.id===b.dataset.mid); if(!m) return; const d=m.data;
     const feld=b.dataset.korr, istNr=feld==='nummer';
     sheet(`<h3>${istNr?'Nummer korrigieren':'Uhrzeit korrigieren'}</h3>
       <input class="inp" id="korrInp" type="${istNr?'text':'time'}" ${istNr?'inputmode="numeric"':''} value="${esc(d[feld]||'')}" autocomplete="off">
@@ -1047,25 +1090,13 @@ async function showReview(){
           if(!wert){ hint.textContent='Bitte eine Nummer eingeben.'; return; }
           wert=wert.padStart(Math.max(2,String(d.nummer||'').length),'0');
           await refresh();
-          const doppelt=nummerVergeben(termin.id, wert, cur.id);
+          const doppelt=nummerVergeben(termin.id, wert, m.id);
           if(doppelt){ hint.textContent='Nummer '+wert+' ist in diesem Messtermin schon vergeben ('+doppelt+').'; return; }
         } else if(!/^\d{1,2}:\d{2}$/.test(wert)){ hint.textContent='Bitte eine gültige Uhrzeit eingeben.'; return; }
-        cur.data[feld]=wert; await saveCur(); close(); showReview();
+        d[feld]=wert; m.updated=Date.now(); await put('messungen', m); close(); offeneMessung=m.id; showObjekt();
       });
     setTimeout(()=>{ const i=document.getElementById('korrInp'); if(i) i.focus(); },50);
   });
-  $('#exportBtn').onclick=async()=>{ await saveCur(); await refresh(); exportStarten(showObjekt, [cur.id]); };
-  const m=cur, zurueck=()=>{ cur=m; kind='messung'; showReview(); };
-  $('#mDetails').ontoggle = e=>{ e.target.open ? zuListen.delete('m:'+m.id) : zuListen.add('m:'+m.id); };
-  textZuUebersicht();
-  document.querySelectorAll('[data-tstep]').forEach(b=>b.onclick=async()=>{ await saveCur(); einzelEdit=zurueck; cur=termin; kind='termin'; step=+b.dataset.tstep; showStep(); });
-  document.querySelectorAll('[data-ostep]').forEach(b=>b.onclick=async()=>{ await saveCur(); einzelEdit=zurueck; cur=objekt; kind='objekt'; step=+b.dataset.ostep; showStep(); });
-  document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{ einzelEdit=zurueck; step=+b.dataset.go; showStep(); });
-  $('#moreBtn').onclick=()=>popMenu(null, geheZu('messung').concat([
-    {icon:shareIcon(), label:'Daten exportieren', run:()=>exportStarten(showObjekt, [cur.id])},
-    {icon:trashIcon(), label:'Messung löschen', danger:true, run:()=>loeschenNachFrage('messung', cur.id)}
-  ]));
-  window.scrollTo(0,0);
 }
 
 /* ---------- Wischen zum Löschen (wie in iOS) ---------- */
@@ -1166,16 +1197,18 @@ function nummerVergeben(tid, nr, ausserId){
 // „Gehe zu“ – identisch auf allen Seiten; die aktuelle Ebene ist ausgegraut
 function gehe(ziel){ return async()=>{ if(cur) await saveCur(); sitzung=null; ziel(); }; }
 function geheZu(ebene){
-  // Eine gemeinsame Übersicht: Messtermin › Messobjekt › Messungen
-  return [{label:'Übersicht', disabled: ebene==='termin' || ebene==='objekt', run:gehe(objekt ? showObjekt : showTermin)}];
+  // „Übersicht“ entfällt im Menü – Navigation über die Titel und den Zurück-Pfeil
+  return [];
 }
 
 function terminZeilen(t, fehl){
   fehl = fehl || new Set();
+  // Zeilen ohne Trennlinie darunter (zusammengehörige Angaben): Name|Datum, Wind|Richtung|Temperatur, Firma|Messleiter
   return [
-    ['Name', t.name, 0, 'name'], ['Datum', fmtDate(t.datum), 1, 'datum'], ['Windgeschwindigkeit', t.windgeschwindigkeit, 2], ['Windrichtung', t.windrichtung, 2],
-    ['Temperatur', fmtTemp(t.temperatur), 3], ['Firma', t.firma, 4], ['Messleiter', t.messleiter, 4, 'messleiter'], ['Messsysteme', t.systeme, 5, 'systeme']
-  ].map(([l,v,i,k])=>`<button class="rv ${k&&fehl.has(k)?'fehlt':''}" data-tstep="${i}"><span class="k">${l}</span><span class="v">${v?esc(v):(k&&fehl.has(k)?'fehlt':'–')}</span></button>`).join('');
+    ['Name', t.name, 0, 'name', 1], ['Datum', fmtDate(t.datum), 1, 'datum'],
+    ['Windgeschwindigkeit', t.windgeschwindigkeit, 2, '', 1], ['Windrichtung', t.windrichtung, 2, '', 1], ['Temperatur', fmtTemp(t.temperatur), 3],
+    ['Firma', t.firma, 4, '', 1], ['Messleiter', t.messleiter, 4, 'messleiter'], ['Messsysteme', t.systeme, 5, 'systeme']
+  ].map(([l,v,i,k,ohne])=>`<button class="rv ${k&&fehl.has(k)?'fehlt':''} ${ohne?'nolinie':''}" data-tstep="${i}"><span class="k">${l}</span><span class="v">${v?esc(v):(k&&fehl.has(k)?'fehlt':'–')}</span></button>`).join('');
 }
 // Liste der Messungen ist standardmäßig offen
 const zuListen = new Set();
@@ -1184,15 +1217,15 @@ const zuListen = new Set();
 function objektZeilen(o, oImgs, sysListe, fehl){
   fehl = fehl || new Set();
   return [['Messobjekt', o.messobjekt, 0], ['Zweck der Messung', o.zweck, 1]]
-    .map(([l,v,i])=>`<button class="rv ${fehl.has(['messobjekt','zweck'][i])?'fehlt':''}" data-ostep="${i}"><span class="k">${l}</span><span class="v">${v?esc(v):(fehl.has(['messobjekt','zweck'][i])?'fehlt':'–')}</span></button>`).join('')
-    + `<h4 class="sub">Anregung und Skizze</h4>
+    .map(([l,v,i])=>`<button class="rv ${fehl.has(['messobjekt','zweck'][i])?'fehlt':''} ${i===1?'nolinie':''}" data-ostep="${i}"><span class="k">${l}</span><span class="v">${v?esc(v):(fehl.has(['messobjekt','zweck'][i])?'fehlt':'–')}</span></button>`).join('')
+    + `
       <button class="rv ${fehl.has('erregung')?'fehlt':''}" data-ostep="${OBJEKT_STEPS.length}"><span class="k">Art der Erregung</span><span class="v">${o.erregung?esc(o.erregung):(fehl.has('erregung')?'fehlt':'–')}</span></button>
       <button class="rv" data-ostep="${OBJEKT_STEPS.length+1}"><span class="k">Skizze und Fotos</span><span class="v">${oImgs.length?oImgs.length+' Bild'+(oImgs.length>1?'er':''):'–'}</span></button>`
-    + `<h4 class="sub">Messsysteme</h4>` + (sysListe.length
+    + `<h4 class="sub mit-linie">Messsysteme</h4>` + (sysListe.length
       ? sysListe.map(x=>{
           const sens=sensorenVon(x.id,o), du=val(o,'sys_'+x.id+'_dauer',SYS_CFG[x.id].dauer.def);
           const sTxt = SYS_CFG[x.id].sensorText ? sens.join('') : (sens.length ? 'Sensoren '+sens.join(', ') : 'keine Sensoren');
-          let h = `<button class="rv ${fehl.has('sys:'+x.id+':sens')?'fehlt':''}" data-ostep="${stepIndex(x.id,1)}"><span class="k">${esc(x.name)}</span><span class="v">${esc([du,sTxt].filter(Boolean).join(', '))||'–'}</span></button>`;
+          let h = `<button class="rv ${fehl.has('sys:'+x.id+':sens')?'fehlt':''} ${sens.length?'nolinie':''}" data-ostep="${stepIndex(x.id,1)}"><span class="k">${esc(x.name)}</span><span class="v">${esc([du,sTxt].filter(Boolean).join(', '))||'–'}</span></button>`;
           if(sens.length) h += `<button class="rv ${fehl.has('sys:'+x.id+':ort')?'fehlt':''}" data-ostep="${stepIndex(x.id,2)}"><span class="k">Sensororte</span><span class="v">${esc(sens.map(nr=>(SYS_CFG[x.id].sensorText?'':nr+': ')+(posWert(o,ortKey(x.id,nr))||'–')).join('\n'))}</span></button>`;
           return h; }).join('')
       : `<p class="muted small">Beim Messtermin sind keine Messsysteme ausgewählt.</p>`);
@@ -1231,13 +1264,62 @@ function textZuUebersicht(){
   if(selectMode) return;
   setTimeout(()=>{
     // Messtermin → Liste aller Messtermine, Messobjekt → Übersicht der Messobjekte
-    [['t:', ()=>showHome()], ['o:', ()=>showTermin()]].forEach(([p,ziel])=>{
-      const sm=document.querySelector(`details.sek[data-sek^="${p}"] > summary`);
+    // Messung → Übersicht aller Messungen des Messobjekts
+    [['details.sek[data-sek^="t:"] > summary', ()=>showHome()], ['details.sek[data-sek^="o:"] > summary', ()=>showTermin()], ['#mDetails > summary', ()=>showObjekt()]].forEach(([sel,ziel])=>{
+      const sm=document.querySelector(sel);
       if(!sm) return;
       sm.classList.add('nav-sum');
       sm.onclick = e=>{ if(e.target.closest('.chev')) return; e.preventDefault(); if(cur) saveCur(); cur=null; ziel(); };
     });
   },0);
+}
+
+/* ---------- Messung in ein anderes Messobjekt verschieben ---------- */
+function messungVerschieben(m){
+  const ziele = objekteOf(termin.id).filter(o=>o.id!==m.oid);
+  if(!ziele.length) return;
+  sheet(`<h3>Messung ${esc(m.data.nummer||'')} verschieben nach …</h3>
+    <div class="chips stack noic">${ziele.map(o=>`<button class="chip" data-x="o:${o.id}">${esc(o.data.messobjekt||'Messobjekt ohne Namen')}</button>`).join('')}</div>
+    <p class="muted small" style="margin:0">Die Nummer bleibt erhalten. Angaben des Messobjekts (Erregung, Sensoren, Skizze) gelten danach vom neuen Objekt.</p>
+    <button class="btn" data-x="close">Abbrechen</button>`, async (x,close)=>{
+      if(x==='close') return close();
+      const oid=x.slice(2);
+      m.oid=oid; m.updated=Date.now(); await put('messungen', m);
+      close(); await refresh();
+      objekt=objekte.find(o=>o.id===oid); cur=messungen.find(z=>z.id===m.id); kind='messung';
+      offeneMessung=m.id; cur=null; toast('Verschoben nach '+(objekt.data.messobjekt||'Messobjekt')); showObjekt();
+    });
+}
+
+let letzteAnsicht='';
+
+/* ---------- Messobjekt in einen anderen Messtermin verschieben ---------- */
+function objektVerschieben(o){
+  const ziele = termine.filter(t=>t.id!==o.tid);
+  if(!ziele.length) return;
+  sheet(`<h3>Messobjekt „${esc(o.data.messobjekt||'ohne Namen')}“ verschieben nach …</h3>
+    <div class="chips stack noic">${ziele.map(t=>`<button class="chip" data-x="t:${t.id}">${esc(t.data.name||fmtDate(t.data.datum)||'Messtermin')}${t.data.name&&t.data.datum?' <span class="muted small">('+esc(fmtDate(t.data.datum))+')</span>':''}</button>`).join('')}</div>
+    <p class="muted small" style="margin:0">Alle Messungen des Objekts werden mit verschoben. Ist eine Messnummer im Zieltermin schon vergeben, bekommt die Messung die nächste freie Nummer. Datum, Witterung und Messsysteme gelten danach vom neuen Termin.</p>
+    <button class="btn" data-x="close">Abbrechen</button>`, async (x,close)=>{
+      if(x==='close') return close();
+      const tid=x.slice(2);
+      await refresh();
+      const belegt = new Set(messungenOfT(tid).map(m=>String(m.data.nummer||'').trim()));
+      let max = Math.max(0, ...[...belegt].map(n=>parseInt(n,10)).filter(n=>!isNaN(n)));
+      const geaendert=[];
+      for(const m of messungenOfO(o.id)){
+        let nr=String(m.data.nummer||'').trim();
+        if(!nr || belegt.has(nr)){ const alt=nr; max+=1; nr=String(max).padStart(Math.max(2,alt.length),'0'); m.data.nummer=nr; if(alt) geaendert.push(alt+' → '+nr); }
+        else { const n=parseInt(nr,10); if(!isNaN(n) && n>max) max=n; }
+        belegt.add(nr);
+        m.tid=tid; m.updated=Date.now(); await put('messungen', m);
+      }
+      o.tid=tid; o.updated=Date.now(); await put('objekte', o);
+      close(); await refresh();
+      termin=termine.find(t=>t.id===tid); objekt=objekte.find(z=>z.id===o.id); offeneMessung=null; cur=null;
+      toast('Verschoben nach '+(termin.data.name||fmtDate(termin.data.datum)||'Messtermin')+(geaendert.length?'. Neue Nummern: '+geaendert.join(', '):''));
+      showObjekt();
+    });
 }
 /* ---------- Abfrage (für Termin, Messobjekt und Messung) ---------- */
 function recentValues(k){
@@ -1283,6 +1365,7 @@ function fieldHTML(f, single){
 }
 
 async function showStep(){
+  letzteAnsicht='';
   if(!sitzung || sitzung.id!==cur.id){
     sitzung = { id:cur.id, kind, neu:neueIds.has(cur.id), snapshot:JSON.parse(JSON.stringify(cur)),
       bilder:(await imgsOf(cur.id)).map(b=>b.id) };
@@ -1333,7 +1416,6 @@ function bindStep(s){
   $('#upBtn').onclick = ()=>{ sitzung=null; einzelEdit=null; kind==='termin' ? showHome() : kind==='objekt' ? showTermin() : showObjekt(); };
   $('#revBtn').onclick = ()=>{
     const ziele = [
-      {label:'Übersicht', run:()=>verlasseWizard(imObjekt() ? showObjekt : showTermin)},
       {label:'Eingabe abbrechen', danger:true, run:eingabeAbbrechen}
     ];
     popMenu(null, ziele);
@@ -1501,13 +1583,14 @@ function showSettings(){
     <h3>Institution</h3>
     <div class="field"><label for="s_firma">Firma</label>${inp('s_firma',settings.firma)}</div>
     <div class="field"><label for="s_messleiter">Messleiter</label>${inp('s_messleiter',settings.messleiter)}</div>
-    ${SYSTEME.map(x=>`<h3>${esc(x.name)}</h3>
+    <h3>Messsysteme</h3>
+    ${SYSTEME.map(x=>`<details class="sek" style="margin-bottom:4px"><summary><span class="st">${esc(x.name)}</span><svg class="chev" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
       <div class="field"><label for="s_${x.id}_g">Gerätetyp</label>${inp('s_'+x.id+'_g',settings.sys[x.id].geraetetyp,true)}</div>
       <div class="field"><label for="s_${x.id}_a">Anti-Aliasing-Filter</label>${inp('s_'+x.id+'_a',settings.sys[x.id].aafilter)}</div>
       <div class="field"><label for="s_${x.id}_r">Abtastrate</label>${inp('s_'+x.id+'_r',settings.sys[x.id].abtastrate)}</div>
       ${SYS_CFG[x.id].sensorText
         ? `<div class="field"><label for="s_${x.id}_s">Sensor (Voreinstellung)</label>${inp('s_'+x.id+'_s',sensorDefault(x.id))}</div>`
-        : `<div class="field"><label for="s_${x.id}_s">Sensornummern, durch Komma getrennt</label>${inp('s_'+x.id+'_s',sensorListe(x.id).join(', '))}</div>`}`).join('')}
+        : `<div class="field"><label for="s_${x.id}_s">Sensornummern, durch Komma getrennt</label>${inp('s_'+x.id+'_s',sensorListe(x.id).join(', '))}</div>`}</details>`).join('')}
     <button class="btn" id="resetBtn">Auf Vorlage zurücksetzen</button>
     <p class="muted small" style="margin-top:28px">Alle Messungen und Bilder liegen nur auf diesem Gerät. Fertige Berichte regelmäßig in der Dateien-App sichern.</p>
   </div>`;
