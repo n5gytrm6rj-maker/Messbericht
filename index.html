@@ -34,8 +34,8 @@ body{margin:0; min-height:100%; background:var(--bg); color:var(--ink); font-siz
 button,input,textarea,select{font:inherit; color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:3px solid var(--steel); outline-offset:2px}
-.wrap{max-width:640px; margin:0 auto; padding:16px 16px 180px}
-.bar{display:flex; align-items:center; gap:8px; min-height:48px}
+.wrap{max-width:640px; margin:0 auto; padding:4px 16px 180px}
+.bar{display:flex; align-items:center; gap:8px; min-height:44px}
 .bar h1{font-size:28px; font-weight:750; letter-spacing:-.02em; margin:0; flex:1}
 .bar h2{font-size:17px; font-weight:650; margin:0; flex:1; min-width:0; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .icon-btn{background:none; border:0; padding:10px; min-width:44px; min-height:44px; color:var(--steel); font-weight:600; font-size:17px}
@@ -203,13 +203,13 @@ body.kb .nav{display:none}
 .chip-ic{display:grid; place-items:center; flex:none; width:30px; height:30px; border-radius:7px; background:var(--steel); color:#fff}
 @media (prefers-color-scheme: dark){.chip-ic{color:#0f1a22}}
 .chip-ic svg{width:20px; height:20px}
-/* iOS-artige runde Knöpfe: Zurück, •••, Aufklapp-Pfeil (alle 36 px, rechte Kanten fluchten) */
-.bar .back-btn, .bar .more-btn{width:36px; height:36px; min-width:36px; min-height:36px; padding:0; border-radius:50%; background:var(--panel); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 2px rgba(0,0,0,.08); flex:none; position:relative}
-.bar .back-btn::before, .bar .more-btn::before{content:""; position:absolute; inset:-4px}
-.bar .back-btn svg{height:17px; width:10px; margin-left:-2px; flex:none}
-.bar .more-btn svg{width:20px; height:20px}
-.bar #setBtn svg{width:22px; height:22px}
-details.sek > summary .chev{width:36px; height:36px; padding:8px; box-sizing:border-box; border-radius:50%; background:var(--panel); box-shadow:0 1px 2px rgba(0,0,0,.08)}
+/* iOS-artige runde Knöpfe: Zurück, •••, Aufklapp-Pfeil (alle 44 pt, rechte Kanten fluchten) */
+.bar .back-btn, .bar .more-btn{width:44px; height:44px; min-width:44px; min-height:44px; padding:0; border-radius:50%; background:var(--panel); display:flex; align-items:center; justify-content:center; box-shadow:0 1px 2px rgba(0,0,0,.08); flex:none; position:relative}
+.bar .back-btn::before, .bar .more-btn::before{content:""; position:absolute; inset:0}
+.bar .back-btn svg{height:20px; width:12px; margin-left:-2px; flex:none}
+.bar .more-btn svg{width:22px; height:22px}
+.bar #setBtn svg{width:24px; height:24px}
+details.sek > summary .chev{width:44px; height:44px; padding:10px; box-sizing:border-box; border-radius:50%; background:var(--panel); box-shadow:0 1px 2px rgba(0,0,0,.08)}
 /* Weißer Hintergrund: gruppierte Listen und runde Knöpfe in iOS-Grau absetzen */
 .chips.stack{background:var(--fill)}
 .chips.stack .chip:active{background:var(--line)}
@@ -258,10 +258,10 @@ details.sek.hat-fehlt > summary .st{color:var(--danger)}
 .big-title{font-size:32px; font-weight:700; letter-spacing:-.01em; margin:10px 0 6px}
 .plist.aus{opacity:.4}
 /* Alle Bereichstitel als Kapsel, einheitliche Höhe – kein Sprung beim Seitenwechsel */
-.sek-static .sum{display:flex; align-items:center; padding:8px 0; min-height:52px; border-bottom:1px solid var(--line)}
+.sek-static .sum{display:flex; align-items:center; padding:8px 0; min-height:60px; border-bottom:1px solid var(--line)}
 .sek-static .st{font-size:15px; font-weight:650}
-details.sek > summary .st, .sek-static .st{display:inline-flex; align-items:center; height:36px; padding:0 16px; border-radius:18px; background:var(--fill)}
-details.sek > summary{padding-top:8px !important; padding-bottom:8px !important; min-height:52px}
+details.sek > summary .st, .sek-static .st{display:inline-flex; align-items:center; height:44px; padding:0 18px; border-radius:22px; background:var(--fill)}
+details.sek > summary{padding-top:8px !important; padding-bottom:8px !important; min-height:60px}
 summary.nav-sum .st:active{background:var(--line)}
 .item .num{min-width:2em}
 .lvl .item .tag{font-size:11px; padding:2px 6px}
@@ -289,11 +289,20 @@ summary.nav-sum .st:active{background:var(--line)}
 .rv .k{min-width:0; -webkit-hyphens:auto; hyphens:auto; overflow-wrap:break-word}
 details.sek h4.sub.mit-linie{border-bottom:1px solid var(--line); padding-bottom:8px; margin-bottom:0}
 .mdetail .gruppe-linie{border-top:1px solid var(--line); margin:6px 0}
-/* Runder Knopf „Neue Messung“ unten rechts (3,5 × die 36-px-Kreise) */
-.fab{position:fixed; --fab-abstand:calc(16px + max(env(safe-area-inset-bottom,0px), 16px)); right:var(--fab-abstand); bottom:var(--fab-abstand); width:126px; height:126px; border-radius:50%; border:0; background:var(--signal); color:var(--signal-ink); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; box-shadow:0 6px 18px rgba(0,0,0,.22); z-index:12}
+/* Runder Knopf „+“ unten rechts (126 pt) */
+.fab{position:fixed; right:max(16px, calc((100vw - 640px) / 2 + 16px)); bottom:max(16px, env(safe-area-inset-bottom,0px)); width:126px; height:126px; border-radius:50%; border:0; background:var(--signal); color:var(--signal-ink); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; box-shadow:0 6px 18px rgba(0,0,0,.22); z-index:12}
 .fab span{font-size:15px; font-weight:700; letter-spacing:-.01em}
 .fab:active{transform:scale(.96)}
 body.kb .fab{display:none}
+/* iOS-Schalter */
+.schalter-zeile{cursor:pointer; justify-content:space-between}
+.schalter-zeile::after{display:none}
+.ios-switch{appearance:none; -webkit-appearance:none; flex:none; width:51px; height:31px; border-radius:16px; background:#e9e9ea; position:relative; margin:0; cursor:pointer; transition:background .2s}
+.ios-switch::before{content:""; position:absolute; top:2px; left:2px; width:27px; height:27px; border-radius:50%; background:#fff; box-shadow:0 2px 4px rgba(0,0,0,.25); transition:transform .2s}
+.ios-switch:checked{background:var(--signal)}
+.ios-switch:checked::before{transform:translateX(20px)}
+@media (prefers-color-scheme: dark){.ios-switch{background:#39393d}}
+.tag.zahl{min-width:28px; text-align:center; font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 </head>
@@ -426,7 +435,7 @@ const TERMIN_STEPS = [
 ];
 // Messobjekt innerhalb eines Termins
 const OBJEKT_STEPS = [
-  {sec:'Messobjekt', q:'Messobjekt', fields:[{k:'messobjekt', type:'text', ph:'oder frei eingeben', chips:['Gewindestange','Stahlseil'], stack:true, recent:true}]},
+  {sec:'Messobjekt', q:'Messobjekt', fields:[{k:'messobjekt', type:'text', ph:'oder frei eingeben', chips:['Gewindestange','Stahlseil'], stack:true, recent:true}, {k:'bauteil_linear', label:'Lineares Bauteil', type:'switch'}]},
   {sec:'Messobjekt', q:'Zweck der Messung', fields:[{k:'zweck', type:'textarea', ph:'oder frei eingeben', toggle:true, chips:['Zugkraftermittlung','Eigenfrequenzanalyse'], stack:true, recent:true}]}
 ];
 // Beim Termin gewählte Messsysteme (in fester Reihenfolge)
@@ -462,7 +471,9 @@ function normDez(v){ const t=String(v==null?'':v).trim().replace('.',','); retur
 // Lage: absolut als l in m oder bezogen als ξ = x/l (dimensionslos)
 function posText(z, e){ z=normDez(z); return z ? (e==='l' ? 'ξ = '+z : z+' m') : ''; }
 // Lage aus gespeicherten Einzelwerten neu zusammensetzen (ältere Einträge enthalten noch „· l“)
-function posWert(obj, k){ if(!obj) return ''; if(obj[k+'_z']!==undefined) return posText(obj[k+'_z'], obj[k+'_e'] || (/ m$/.test(obj[k]||'') ? 'm' : 'l')); return obj[k]||''; }
+// Ist beim Messobjekt „Lineares Bauteil“ ausgeschaltet, sind Sensororte Freitext (Schlüssel …_t)
+const istLinear = o => !o || o.bauteil_linear!=='0';
+function posWert(obj, k){ if(!obj) return ''; if(/^sys_.+_ort(_|$)/.test(k) && !istLinear(obj)) return String(obj[k+'_t']||'').trim(); if(obj[k+'_z']!==undefined) return posText(obj[k+'_z'], obj[k+'_e'] || (/ m$/.test(obj[k]||'') ? 'm' : 'l')); return obj[k]||''; }
 const ortKey = (id, nr) => id==='phyphox' ? 'sys_phyphox_ort' : 'sys_'+id+'_ort_'+nr;
 function systemSeiten(x, o){
   const cfg=SYS_CFG[x.id];
@@ -504,7 +515,7 @@ const ERREGUNG_SEITEN = {
   'Personen': {sec:'Anregung', q:'Anregung durch Personen', fields:[
     {k:'personen', label:'Personenanzahl', type:'text', mode:'numeric', chips:['1','2','3','4','5']},
     {k:'gewicht', label:'Gewicht', type:'text', ph:'z. B. 80 kg / 75 kg'},
-    {k:'p_art', label:'Bewegung', type:'text', toggle:true, chipsOnly:true, chips:['Gehen','Laufen','Springen','Fersenfall','Wippen']}]},
+    {k:'p_art', label:'Bewegung', type:'text', toggle:true, ph:'oder frei eingeben', chips:['Gehen','Laufen','Springen','Fersenfall','Wippen']}]},
   'Ambient Vibration': {sec:'Anregung', q:'Ambient Vibration', fields:[
     {k:'amb_quellen', label:'Erkennbare Quellen', type:'text', toggle:true, ph:'weitere Quellen', chips:['Wind','Verkehr','Fußgänger','Maschinen','Bauarbeiten']}]},
   'Impulshammer': {sec:'Anregung', q:'Impulshammer', fields:[
@@ -537,9 +548,12 @@ const mitZugkraft = o => String((o&&o.zweck)||'').includes('Zugkraftermittlung')
 function ersteSeite(){
   const zug = mitZugkraft(objekt&&objekt.data);
   const notiz = {k:'mess_notizen', label:'Systembeschreibung', type:'textarea', ph:'oder frei eingeben', toggle:true, chips:['Grundstab II','Grundstab III','Grundstab IV']};
-  return {sec:'Messung', q: 'System', fields: zug ? [{k:'zugkraft', label:'Zugkraft in kN', type:'text', mode:'decimal', ph:'z. B. 12,5'}, notiz] : [notiz]};
+  // Systembeschreibung (Grundstab …) nur bei linearem Bauteil; Zugkraft wie bisher bei Zugkraftermittlung
+  const linear = istLinear(objekt&&objekt.data);
+  const felder = (zug ? [{k:'zugkraft', label:'Zugkraft in kN', type:'text', mode:'decimal', ph:'z. B. 12,5'}] : []).concat(linear ? [notiz] : []);
+  return felder.length ? {sec:'Messung', q: 'System', fields: felder} : null;
 }
-function messungSteps(){ return [ersteSeite()].concat(erregungenVon(objekt&&objekt.data).map(e=>ERREGUNG_SEITEN[e]), [NOTIZ_SEITE], arduinoSeite()); }
+function messungSteps(){ return [ersteSeite()].filter(Boolean).concat(erregungenVon(objekt&&objekt.data).map(e=>ERREGUNG_SEITEN[e]), [NOTIZ_SEITE], arduinoSeite()); }
 function zugkraftText(v){ const t=normDez(v); return t ? (/^[-+]?\d+(,\d+)?$/.test(t) ? t+' kN' : t) : ''; }
 // Diese Angaben schlägt eine neue Messung aus der vorherigen Messung am selben Messobjekt vor
 // Neue Messung übernimmt nur diese Angaben aus der vorherigen Messung am selben Objekt
@@ -746,7 +760,7 @@ function pflichtFehlendKeys(t, o, d){
     if(sens.some(nr=>leer(posWert(o,ortKey(x.id,nr))))) add('sys:'+x.id+':ort', x.name+': Sensorort');
   }
   if(mitZugkraft(o) && leer(d.zugkraft)) add('zugkraft','Zugkraft');
-  if(leer(d.mess_notizen)) add('mess_notizen','Systembeschreibung');
+  if(istLinear(o) && leer(d.mess_notizen)) add('mess_notizen','Systembeschreibung');
   if(erregungenVon(o).includes('Impulshammer')){
     if(leer(d.hammer_typ)) add('hammer_typ','Impulshammer');
     if(leer(posWert(d,'hammer_ort'))) add('hammer_ort','Anschlagpunkt');
@@ -890,7 +904,7 @@ async function showHome(){
     return `<li class="item swipe" data-del="termin" data-id="${t.id}"><div class="front"><button class="open" data-termin="${t.id}">
         <span class="main"><span class="title">${esc(t.data.name || (t.data.datum?fmtDate(t.data.datum):'Ohne Datum'))}</span>
         <span class="meta">${esc([t.data.name&&t.data.datum?fmtDate(t.data.datum):'', namen||'Noch kein Messobjekt'].filter(Boolean).join(', '))}</span></span>
-        <span class="tag">${n} Messung${n===1?'':'en'}</span></button></div><button class="del-btn" tabindex="-1">Löschen</button></li>`;
+        <span class="tag zahl" aria-label="${n} Messung${n===1?'':'en'}">${n}</span></button></div><button class="del-btn" tabindex="-1">Löschen</button></li>`;
   }).join('');
   $('#app').innerHTML = `<div class="wrap">
     <div class="bar"><button class="icon-btn more-btn" id="setBtn" aria-label="Einstellungen">${gearIcon()}</button><h2>Messbericht</h2><button class="icon-btn more-btn" id="moreBtn" aria-label="Mehr">${moreIcon()}</button></div>
@@ -936,7 +950,7 @@ async function showTermin(){
     return `<li class="item ${selectMode?'':'swipe'}" data-del="objekt" data-id="${o.id}"><div class="front"><button class="open" data-obj="${o.id}">
         <span class="main"><span class="title">${esc(o.data.messobjekt||'Ohne Namen')}</span>
         <span class="meta">${esc(o.data.zweck||'Zweck fehlt noch')}</span></span>
-        <span class="tag ${selectMode&&n&&messungenOfO(o.id).every(m=>selected.has(m.id))?'done':''}">${selectMode ? (()=>{ const k=messungenOfO(o.id).filter(m=>selected.has(m.id)).length; return k ? k+' von '+n+' gewählt' : n+' Messung'+(n===1?'':'en'); })() : n+' Messung'+(n===1?'':'en')}</span></button></div><button class="del-btn" tabindex="-1">Löschen</button></li>`;
+        <span class="tag zahl ${selectMode&&n&&messungenOfO(o.id).every(m=>selected.has(m.id))?'done':''}" aria-label="${n} Messung${n===1?'':'en'}">${selectMode ? (()=>{ const k=messungenOfO(o.id).filter(m=>selected.has(m.id)).length; return k ? k+'/'+n : String(n); })() : String(n)}</span></button></div><button class="del-btn" tabindex="-1">Löschen</button></li>`;
   }).join('');
   $('#app').innerHTML = `<div class="wrap review">
     <div class="bar"><button class="icon-btn back-btn" id="upBtn" aria-label="Zurück zu Termine">${backIcon()}</button><h2>${esc(t.name||fmtDate(t.datum)||'Messtermin')}</h2><button class="icon-btn more-btn" id="moreBtn" aria-label="Mehr">${moreIcon()}</button></div>
@@ -1227,7 +1241,7 @@ const zuListen = new Set();
 function objektZeilen(o, oImgs, sysListe, fehl){
   fehl = fehl || new Set();
   return [['Messobjekt', o.messobjekt, 0], ['Zweck der Messung', o.zweck, 1]]
-    .map(([l,v,i])=>`<button class="rv ${fehl.has(['messobjekt','zweck'][i])?'fehlt':''} ${i===1?'nolinie':''}" data-ostep="${i}"><span class="k">${l}</span><span class="v">${v?esc(v):(fehl.has(['messobjekt','zweck'][i])?'fehlt':'–')}</span></button>`).join('')
+    .map(([l,v,i])=>`<button class="rv ${fehl.has(['messobjekt','zweck'][i])?'fehlt':''} ${i===1?'nolinie':''} ${i===0?'nolinie':''}" data-ostep="${i}"><span class="k">${l}</span><span class="v">${v?esc(v):(fehl.has(['messobjekt','zweck'][i])?'fehlt':'–')}</span></button>${i===0?`<button class="rv" data-ostep="0"><span class="k">Lineares Bauteil</span><span class="v">${istLinear(o)?'ja':'nein'}</span></button>`:''}`).join('')
     + `
       <button class="rv ${fehl.has('erregung')?'fehlt':''}" data-ostep="${OBJEKT_STEPS.length}"><span class="k">Art der Erregung</span><span class="v">${o.erregung?esc(o.erregung):(fehl.has('erregung')?'fehlt':'–')}</span></button>
       <button class="rv" data-ostep="${OBJEKT_STEPS.length+1}"><span class="k">Skizze und Fotos</span><span class="v">${oImgs.length?oImgs.length+' Bild'+(oImgs.length>1?'er':''):'–'}</span></button>`
@@ -1339,6 +1353,7 @@ function recentValues(k){
 function fieldHTML(f, single){
   const v = cur.data[f.k]==null?'':cur.data[f.k];
   const id = 'f_'+f.k;
+  if(f.type==='switch') return `<div class="field"><div class="chips stack noic"><label class="chip schalter-zeile" for="${id}"><span>${esc(f.label)}</span><input type="checkbox" class="ios-switch" id="${id}" data-switch="${f.k}" ${cur.data[f.k]!=='0'?'checked':''}></label></div></div>`;
   let h = `<div class="field">${(!single && f.label)?`<label for="${id}">${esc(f.label)}</label>`:''}`;
   if(f.type==='compass'){
     h += `<div class="compass">${COMPASS.map(([s,l])=>{ const val = s==='–'?'windstill':`${l} (${s})`; return `<button class="chip ${v===val?'on':''}" data-set="${f.k}" data-val="${esc(val)}">${s==='–'?'still':s}</button>`; }).join('')}</div>
@@ -1458,6 +1473,7 @@ function bindStep(s){
   // Dateibezeichnung: beim Antippen alles markieren, damit die neue Eingabe den alten Wert ersetzt
   document.querySelectorAll('.dinp').forEach(el=>el.addEventListener('focus',()=>setTimeout(()=>{ try{ el.setSelectionRange(0, el.value.length); }catch(e){ el.select(); } },0)));
   $('#ardKeine') && ($('#ardKeine').onclick = ()=>{ cur.data.ard_keine = cur.data.ard_keine ? '' : '1'; scheduleSave(); showStep(); });
+  document.querySelectorAll('[data-switch]').forEach(el=>el.onchange=()=>{ cur.data[el.dataset.switch] = el.checked ? '' : '0'; scheduleSave(); });
   // Sensorbezeichnung direkt in der Liste ändern
   document.querySelectorAll('.sname').forEach(el=>{
     el.addEventListener('click', e=>e.stopPropagation());
@@ -1530,7 +1546,11 @@ function syncChips(k){
 
 // Sensororte als ein Block: „Sensor 71 | Eingabe | l [m] / ξ [-]“
 function posListeHTML(s){
-  return `<div class="chips stack noic plist">${s.fields.map(f=>{
+  const linear = istLinear(cur.data);
+  const schalter = '';
+  if(!linear) return schalter + `<div class="chips stack noic plist">${s.fields.map(f=>`<div class="chip prow"><label class="plabel" for="f_${f.k}_t">${esc(f.label)}</label>
+      <input class="inp pinline" id="f_${f.k}_t" data-k="${f.k}_t" value="${esc(cur.data[f.k+'_t']||'')}" placeholder="z. B. Mitte Feld 2" enterkeyhint="next" autocomplete="off"></div>`).join('')}</div>`;
+  return schalter + `<div class="chips stack noic plist">${s.fields.map(f=>{
     const z=cur.data[f.k+'_z']||'', e=cur.data[f.k+'_e'] || (/ m$/.test(cur.data[f.k]||'') ? 'm' : (f.unitDef||'m'));
     return `<div class="chip prow"><label class="plabel" for="f_${f.k}">${esc(f.label)}</label>
       <input class="inp pinline" id="f_${f.k}" data-pos="${f.k}" data-def="${e}" value="${esc(z)}" inputmode="decimal" placeholder="0,00" enterkeyhint="next" autocomplete="off">
