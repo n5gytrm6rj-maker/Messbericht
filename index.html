@@ -291,7 +291,7 @@ details.sek h4.sub.mit-linie{border-bottom:1px solid var(--line); padding-bottom
 .mdetail .gruppe-linie{border-top:1px solid var(--line); margin:6px 0}
 /* Runder Knopf „Neue Messung“ unten rechts (3,5 × die 36-px-Kreise) */
 .fab{position:fixed; --fab-abstand:calc(16px + max(env(safe-area-inset-bottom,0px), 16px)); right:var(--fab-abstand); bottom:var(--fab-abstand); width:126px; height:126px; border-radius:50%; border:0; background:var(--signal); color:var(--signal-ink); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; box-shadow:0 6px 18px rgba(0,0,0,.22); z-index:12}
-.fab span{font-size:17px; font-weight:700}
+.fab span{font-size:15px; font-weight:700; letter-spacing:-.01em}
 .fab:active{transform:scale(.96)}
 body.kb .fab{display:none}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
@@ -760,7 +760,13 @@ const fehlSet = (t,o,d) => new Set(pflichtFehlendKeys(t,o,d).map(x=>x.k));
 
 /* ---------- Datensicherung: Messtermine exportieren / importieren ---------- */
 const blobZuText = b => new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(b); });
-async function textZuBlob(u){ return await (await fetch(u)).blob(); }
+async function textZuBlob(u){
+  const i=u.indexOf(','), kopf=u.slice(0,i), daten=u.slice(i+1);
+  const typ=(kopf.match(/data:([^;]+)/)||[])[1]||'image/jpeg';
+  const bin=atob(daten), arr=new Uint8Array(bin.length);
+  for(let k=0;k<bin.length;k++) arr[k]=bin.charCodeAt(k);
+  return new Blob([arr],{type:typ});
+}
 async function bilderSichern(mid){ const out=[]; for(const b of await imgsOf(mid)) out.push({w:b.w, h:b.h, caption:b.caption||'', order:b.order, data:await blobZuText(b.blob)}); return out; }
 async function sicherungExport(liste){
   await refresh();
@@ -785,7 +791,10 @@ async function sicherungExport(liste){
 }
 async function sicherungImport(datei){
   let paket;
-  try{ paket=JSON.parse(await datei.text()); }catch(e){ return alert('Die Datei ist keine gültige Sicherung.'); }
+  let text='';
+  try{ text = datei.text ? await datei.text() : await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsText(datei); }); }
+  catch(e){ return alert('Die Datei konnte nicht gelesen werden: '+e.message); }
+  try{ paket=JSON.parse(text); }catch(e){ return alert('Die Datei „'+datei.name+'“ ist keine gültige Sicherung.'); }
   if(!paket || paket.app!=='messbericht' || !Array.isArray(paket.termine)) return alert('Die Datei ist keine Sicherung der Messbericht-App.');
   const n=paket.termine.length;
   if(!confirm(n+' Messtermin'+(n===1?'':'e')+' importieren? Vorhandene Messtermine bleiben unverändert, die importierten kommen als neue Einträge dazu.')) return;
@@ -885,20 +894,20 @@ async function showHome(){
   }).join('');
   $('#app').innerHTML = `<div class="wrap">
     <div class="bar"><button class="icon-btn more-btn" id="setBtn" aria-label="Einstellungen">${gearIcon()}</button><h2>Messbericht</h2><button class="icon-btn more-btn" id="moreBtn" aria-label="Mehr">${moreIcon()}</button></div>
-    <input type="file" id="importIn" accept=".json,application/json" hidden>
+    <input type="file" id="importIn" style="position:absolute; width:1px; height:1px; opacity:0; pointer-events:none">
     <details class="sek" id="tListe" ${zuListen.has('home')?'':'open'}><summary><span class="st">Messtermine</span>
       <svg class="chev" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
-      <div class="lvl">${termine.length?`<ul class="list" style="margin-top:0">${items}</ul>`:`<div class="empty">Noch keine Messtermine.<br>Leg den ersten mit „Neuer Messtermin“ an.</div>`}</div>
+      <div class="lvl">${termine.length?`<ul class="list" style="margin-top:0">${items}</ul>`:`<div class="empty">Noch keine Messtermine.<br>Leg den ersten mit „+ Termin“ an.</div>`}</div>
     </details>
   </div>
-  <div class="nav"><div class="inner"><button class="btn primary" id="newBtn">Neuer Messtermin</button></div></div>`;
+  <button class="fab" id="newBtn" aria-label="Neuer Messtermin"><svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 8v24M8 20h24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round"/></svg><span>Termin</span></button>`;
   $('#newBtn').onclick = newTermin;
   enableSwipe();
   $('#tListe').ontoggle = e=>{ e.target.open ? zuListen.delete('home') : zuListen.add('home'); };
   $('#setBtn').onclick = showSettings;
   $('#moreBtn').onclick = ()=>popMenu(null, [
     {icon:saveIcon(), label:'Datensicherung erstellen', disabled:!termine.length, run:()=>sicherungExport(termine)},
-    {icon:importIcon(), label:'Datensicherung importieren', run:()=>$('#importIn').click()}
+    {icon:importIcon(), label:'Datensicherung importieren', sofort:true, run:()=>$('#importIn').click()}
   ]);
   $('#importIn').onchange = async e=>{ const f=e.target.files[0]; e.target.value=''; if(f) await sicherungImport(f); };
   document.querySelectorAll('[data-termin]').forEach(b=>b.onclick=()=>{ termin=termine.find(t=>t.id===b.dataset.termin); showTermin(); });
@@ -939,7 +948,7 @@ async function showTermin(){
       </details>
     </div>
   </div>
-  <div class="nav"><div class="inner">${selectMode ? exportNav() : '<button class="btn primary" id="newOBtn">Neues Messobjekt</button>'}</div></div>`;
+  ${selectMode ? `<div class="nav"><div class="inner">${exportNav()}</div></div>` : '<button class="fab" id="newOBtn" aria-label="Neues Messobjekt"><svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 8v24M8 20h24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round"/></svg><span>Objekt</span></button>'}`;
   $('#upBtn').onclick = ()=>{ selectMode=false; selected.clear(); showHome(); };
   $('#newOBtn') && ($('#newOBtn').onclick = newObjekt);
   exportBinden(showTermin);
@@ -1182,7 +1191,8 @@ function popMenu(titel, items){
   document.body.appendChild(bg);
   const close=()=>bg.remove();
   bg.onclick=e=>{ if(e.target===bg) close(); };
-  bg.querySelectorAll('.pop-item').forEach(b=>b.onclick=async()=>{ close(); if(cur) await saveCur(); await refresh(); items[+b.dataset.i].run(); });
+  // iOS öffnet die Dateiauswahl nur direkt im Tipp – solche Einträge (sofort:true) laufen ohne vorheriges Warten
+  bg.querySelectorAll('.pop-item').forEach(b=>b.onclick=async()=>{ const it=items[+b.dataset.i]; if(it.sofort){ it.run(); close(); return; } close(); if(cur) await saveCur(); await refresh(); it.run(); });
 }
 
 // Ist die Messnummer im Termin schon vergeben? Gibt dann Objekt und Messung zurück.
