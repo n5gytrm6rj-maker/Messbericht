@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -382,6 +382,19 @@ details.sek[data-sek] > .rv, details.sek[data-sek] > h4.sub{margin-left:18px; wi
 @media (prefers-color-scheme: dark){.xbtn{color:#636366}}
 .item .tag.zahl.alle{background:#c9f2d3; border-color:#c9f2d3; color:#000}
 @media (prefers-color-scheme: dark){.item .tag.zahl.alle{background:#2f6b41; border-color:#2f6b41; color:#fff}}
+/* Ohne viewport-fit=cover: Mindestabstand unten für den Home-Balken vorhalten */
+.nav{padding-bottom:max(20px, calc(12px + env(safe-area-inset-bottom,0px)))}
+.fab{bottom:max(24px, env(safe-area-inset-bottom,0px))}
+html.sheet-ios .sheet{padding-bottom:max(20px, calc(8px + env(safe-area-inset-bottom,0px)))}
+.meta .nb{display:inline-block; max-width:100%}
+/* Messungsliste: „unvollst.“ in Höhe der Uhrzeit fest rechts, die Unterzeile darf darunter die volle Breite nutzen */
+.item[data-del="messung"] .open{position:relative; align-items:flex-start}
+.item[data-del="messung"] .open .num{align-self:center}
+.item[data-del="messung"] .open .tag.warn{position:absolute; top:3px; right:64px}
+.item[data-del="messung"]:has(.check) .open .tag.warn{right:20px}
+.item[data-del="messung"] .open:has(.tag.warn) .title{padding-right:70px; overflow:visible; text-overflow:clip}
+.item[data-del="messung"] .main{flex:1 1 auto}
+.meta .nb{white-space:nowrap}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 </head>
@@ -1016,7 +1029,7 @@ async function showHome(){
     const namen = os.map(o=>o.data.messobjekt).filter(Boolean).join(', ');
     return `<li class="item swipe" data-del="termin" data-id="${t.id}"><div class="front"><button class="open" data-termin="${t.id}">
         <span class="main"><span class="title">${esc(t.data.name || (t.data.datum?fmtDate(t.data.datum):'Ohne Datum'))}</span>
-        <span class="meta">${esc([t.data.name&&t.data.datum?fmtDate(t.data.datum):'', namen||'Noch kein Messobjekt'].filter(Boolean).join(', '))}</span></span>
+        <span class="meta">${metaHTML([t.data.name&&t.data.datum?fmtDate(t.data.datum):'', namen||'Noch kein Messobjekt'])}</span></span>
         ${terminUnvollst(t)?'<span class="tag warn" aria-label="unvollständig">unvollst.</span>':''}<span class="tag zahl" aria-label="${n} Messung${n===1?'':'en'}">${n}</span></button></div><button class="del-btn" tabindex="-1">Löschen</button></li>`;
   }).join('');
   $('#app').innerHTML = `<div class="wrap">
@@ -1061,7 +1074,7 @@ async function showTermin(){
     const n=messungenOfO(o.id).length;
     return `<li class="item ${selectMode?'':'swipe'}" data-del="objekt" data-id="${o.id}"><div class="front"><button class="open" data-obj="${o.id}">
         <span class="main"><span class="title">${esc(o.data.messobjekt||'Ohne Namen')}</span>
-        <span class="meta">${esc(o.data.zweck||'Zweck fehlt noch')}</span></span>
+        <span class="meta">${metaHTML([o.data.zweck||'Zweck fehlt noch'])}</span></span>
         ${objektUnvollst(termin,o)?'<span class="tag warn" aria-label="unvollständig">unvollst.</span>':''}${(()=>{ const alle = selectMode && n && messungenOfO(o.id).every(m=>selected.has(m.id));
           return alle
             ? `<span class="tag zahl alle" aria-label="alle ${n} Messungen gewählt"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 10.5l3.5 3.5L15.5 6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>`
@@ -1121,7 +1134,7 @@ async function showObjekt(){
       <button class="open" data-open="${m.id}">
         <span class="num">${esc(d.nummer||'–')}</span>
         <span class="main"><span class="title">${d.uhrzeit?esc(d.uhrzeit)+' Uhr':''}</span>
-        <span class="meta">${esc([zugkraftText(d.zugkraft)?'Zugkraft '+zugkraftText(d.zugkraft):'', d.mess_notizen].filter(Boolean).join(', '))}</span></span>
+        <span class="meta">${metaHTML([zugkraftText(d.zugkraft)?'Zugkraft '+zugkraftText(d.zugkraft):'', d.mess_notizen])}</span></span>
         ${miss?'<span class="tag warn" aria-label="unvollständig">unvollst.</span>':''}
       </button></div>${selectMode?'':'<button class="del-btn" tabindex="-1">Löschen</button>'}</li>${!selectMode && m.id===offeneMessung ? `<li class="mdetail">${messungDetailHTML(m)}</li>` : ''}`;
   }).join('');
@@ -1490,6 +1503,12 @@ function listenKapseln(){
       };
     });
   },0);
+}
+
+// Unterzeile in Listen: Umbruch nur zwischen den einzelnen Angaben (nach dem Komma), nie mitten in einer Angabe
+function metaHTML(teile){
+  return teile.filter(Boolean).flatMap(t=>String(t).split(/,\s*/)).filter(x=>x.trim())
+    .map((x,i,arr)=>`<span class="nb">${esc(x.trim())}${i<arr.length-1?',':''}</span>`).join(' ');
 }
 /* ---------- Abfrage (für Termin, Messobjekt und Messung) ---------- */
 function recentValues(k){
