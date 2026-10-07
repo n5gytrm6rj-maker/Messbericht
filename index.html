@@ -648,7 +648,7 @@ const ERREGUNG_SEITEN = {
     {k:'hammer_ort', label:'Anschlagpunkt', type:'pos', quick:['0,25','0,33','0,50'], linAbh:true},
     {k:'hammer_spitze', label:'Hammerspitze', type:'text', chips:['Gummi','Kunststoff','Stahl']}]},
   'Glocken': {sec:'Anregung', q:'Anregung', fields:[
-    {k:'glocken_anzahl', label:'Glockenanzahl', type:'text', mode:'numeric', chips:['1','2','3','4','5','6','7']}]},
+    {k:'glocken', label:'Glocken', type:'text', toggle:true, chipsOnly:true, stack:true, hint:'Mehrfachauswahl möglich', chips:['1','2','3','4','5','6','7'], chipLabel:c=>glockeName(cur&&cur.data,c)}]},
   'Shaker': {sec:'Anregung', q:'Anregung', fields:[
     {k:'shaker_signal', label:'Signal', type:'text', ph:'oder frei eingeben', chips:['Sinus','Sweep','Rauschen']},
     {k:'shaker_frequenz', label:'Frequenz / Bereich', type:'text', ph:'z. B. 2–20 Hz'},
@@ -690,9 +690,16 @@ function ersteSeite(){
   return felder.length ? {sec:'Messung', q: 'System', fields: felder} : null;
 }
 // Glocken: nach der Anzahl folgt je Glocke eine eigene Seite (Masse, Läutefrequenz)
-const glockenN = d => Math.max(0, Math.min(20, parseInt(d&&d.glocken_anzahl)||0));
+// Gewählte Glocken (1–7); ältere Eingaben mit „Glockenanzahl“ ergeben 1…n
+const glockeName = (d,n) => { const x=String((d&&d['glocke_'+n+'_name'])||'').trim(); return x ? (/glocke/i.test(x) ? x : x+'-Glocke') : 'Glocke '+n; };
+const glockenListe = d => {
+  if(!d) return [];
+  if(d.glocken!==undefined) return [...new Set(String(d.glocken).split(',').map(x=>parseInt(x)).filter(n=>n>=1&&n<=7))].sort((a,b)=>a-b);
+  const n=Math.min(7,parseInt(d.glocken_anzahl)||0); return Array.from({length:n},(_,i)=>i+1);
+};
 function glockenSeiten(d){
-  const out=[]; for(let n=1;n<=glockenN(d);n++) out.push({sec:'Anregung', sub:'Glocken', q:'Glocke '+n, fields:[
+  const out=[]; for(const n of glockenListe(d)) out.push({sec:'Anregung', sub:'Glocken', q:glockeName(d,n), fields:[
+    {k:'glocke_'+n+'_name', label:'Name (optional)', dlabel:'Glocke '+n+': Name', type:'text', ph:'z. B. Nepomuk'},
     {k:'glocke_'+n+'_masse', label:'Masse', dlabel:'Glocke '+n+': Masse', type:'text', ph:'z. B. 1200 kg'},
     {k:'glocke_'+n+'_frq', label:'Läutefrequenz', dlabel:'Glocke '+n+': Läutefrequenz', type:'text', ph:'z. B. 0,75 Hz'}]});
   return out;
@@ -706,7 +713,7 @@ function messungSteps(d){
 function zugkraftText(v){ const t=normDez(v); return t ? (/^[-+]?\d+(,\d+)?$/.test(t) ? t+' kN' : t) : ''; }
 // Diese Angaben schlägt eine neue Messung aus der vorherigen Messung am selben Messobjekt vor
 // Neue Messung übernimmt nur diese Angaben aus der vorherigen Messung am selben Objekt
-const UEBERNAHME = ['zugkraft','mess_notizen','personen','gewicht','p_art','hammer_typ','hammer_ort','hammer_ort_t','hammer_spitze','glocken_anzahl','shaker_signal','shaker_frequenz','shaker_kraft','shaker_ort','shaker_ort_t','shaker_ort_z','shaker_ort_e','unw_frequenz','unw_moment','unw_ort'].concat(Array.from({length:20},(_,i)=>['glocke_'+(i+1)+'_masse','glocke_'+(i+1)+'_frq']).flat());
+const UEBERNAHME = ['zugkraft','mess_notizen','personen','gewicht','p_art','hammer_typ','hammer_ort','hammer_ort_t','hammer_spitze','shaker_signal','shaker_frequenz','shaker_kraft','shaker_ort','shaker_ort_t','shaker_ort_z','shaker_ort_e','unw_frequenz','unw_moment','unw_ort'].concat(Array.from({length:20},(_,i)=>['glocke_'+(i+1)+'_name','glocke_'+(i+1)+'_masse','glocke_'+(i+1)+'_frq']).flat());
 // Anschlagpunkt: bei linearem Bauteil l [m] / ξ [-], sonst Freitext
 const anschlagWert = (o, d, k) => { k=k||'hammer_ort'; return istLinear(o) ? posWert(d,k) : String((d&&d[k+'_t'])||'').trim(); };
 // Übernommene Angabe noch unverändert? Dann ersetzt die erste neue Auswahl sie komplett.
@@ -918,8 +925,8 @@ function pflichtFehlendKeys(t, o, d){
     if(leer(d.hammer_spitze)) add('hammer_spitze','Hammerspitze');
   }
   if(erregungenVon(o).includes('Glocken')){
-    if(leer(d.glocken_anzahl)) add('glocken_anzahl','Glocken: Anzahl');
-    for(let n=1;n<=glockenN(d);n++){
+    if(!glockenListe(d).length) add('glocken','Glocken');
+    for(const n of glockenListe(d)){
       if(leer(d['glocke_'+n+'_masse'])) add('glocke_'+n+'_masse','Glocke '+n+': Masse');
       if(leer(d['glocke_'+n+'_frq'])) add('glocke_'+n+'_frq','Glocke '+n+': Läutefrequenz');
     }
@@ -1579,7 +1586,7 @@ function fieldHTML(f, single){
     h += `<div class="chips stack noic">${f.chips.map(c=>`<div class="chip srow ${parts.includes(c)?'on':''}" role="button" data-tog="${f.k}" data-val="${esc(c)}"><span>Sensor</span><input class="sname" data-sid="${f.rename}" data-alt="${esc(c)}" value="${esc(c)}" inputmode="numeric" autocomplete="off" aria-label="Bezeichnung Sensor ${esc(c)}"></div>`).join('')}</div>`;
   } else if(f.chips){
     const parts = String(v).split(',').map(s=>s.trim());
-    h += `<div class="chips ${f.stack?'stack':''} ${f.stack&&!f.icons?'noic':''}">${f.chips.map(c=>`<button class="chip ${(f.toggle?parts.includes(c):v===c)?'on':''} ${!f.stack && String(c).length===1?'rund':''}" data-${f.toggle?'tog':'set'}="${f.k}" data-val="${esc(c)}">${f.icons&&f.icons[c]?`<span class="chip-ic">${SYS_ICONS[f.icons[c]]}</span>`:''}<span>${esc(c)}</span></button>`).join('')}</div>`;
+    h += `<div class="chips ${f.stack?'stack':''} ${f.stack&&!f.icons?'noic':''}">${f.chips.map(c=>`<button class="chip ${(f.toggle?parts.includes(c):v===c)?'on':''} ${!f.stack && String(c).length===1?'rund':''}" data-${f.toggle?'tog':'set'}="${f.k}" data-val="${esc(c)}">${f.icons&&f.icons[c]?`<span class="chip-ic">${SYS_ICONS[f.icons[c]]}</span>`:''}<span>${esc(f.chipLabel?f.chipLabel(c):c)}</span></button>`).join('')}</div>`;
   }
   if(f.hint) h += `<p class="muted small" style="margin:10px 0 0">${esc(f.hint)}</p>`;
   if(istUebernommen(f.k)) h += `<p class="muted small" data-carry="${f.k}" style="margin:8px 0 0">↺ aus vorheriger Messung</p>`;
@@ -1858,8 +1865,14 @@ function showSettings(){
         : `<div class="field"><label for="s_${x.id}_s">Sensornummern, durch Komma getrennt</label>${inp('s_'+x.id+'_s',sensorListe(x.id).join(', '))}</div>`}</details>`).join('')}
     <button class="btn" id="resetBtn">Auf Vorlage zurücksetzen</button>
     <p class="muted small" style="margin-top:28px">Alle Messungen und Bilder liegen nur auf diesem Gerät. Fertige Berichte regelmäßig in der Dateien-App sichern.</p>
+    <p class="muted small" id="verInfo" style="margin-top:12px">Version: …</p>
   </div>`;
   $('#homeBtn').onclick=showHome;
+  // Version = Nummer des aktuell gespeicherten Offline-Stands (sw.js)
+  (window.caches ? caches.keys() : Promise.resolve([])).then(ks=>{
+    const n=ks.map(k=>(/^messbericht-v(\d+)$/.exec(k)||[])[1]).filter(Boolean).map(Number).sort((a,b)=>b-a)[0];
+    const el=$('#verInfo'); if(el) el.textContent='Version: '+(n||'nicht ermittelbar');
+  }).catch(()=>{ const el=$('#verInfo'); if(el) el.textContent='Version: nicht ermittelbar'; });
   const bind=(id,fn)=>{ $('#'+id).oninput=e=>{ fn(e.target.value); saveSettings(settings); }; };
   bind('s_firma',v=>settings.firma=v); bind('s_messleiter',v=>settings.messleiter=v);
   SYSTEME.forEach(x=>{ bind('s_'+x.id+'_g',v=>settings.sys[x.id].geraetetyp=v); bind('s_'+x.id+'_a',v=>settings.sys[x.id].aafilter=v); bind('s_'+x.id+'_r',v=>settings.sys[x.id].abtastrate=v); bind('s_'+x.id+'_s',v=>{ if(SYS_CFG[x.id].sensorText) settings.sys[x.id].sensor=v; else settings.sys[x.id].sensoren=v; }); });
@@ -1885,7 +1898,7 @@ function reportFields(m){
     ...sensorFelder(t,o,d), erregung:erregungText(o,d),
     ergaenzungen: lines([['Personenanzahl',d.personen],['Gewicht',d.gewicht],['Erkennbare Quellen',d.amb_quellen],
       ['Impulshammer',d.hammer_typ],['Hammerspitze',d.hammer_spitze],
-      ['Glockenanzahl',d.glocken_anzahl],...Array.from({length:glockenN(d)},(_,i)=>['Glocke '+(i+1), [d['glocke_'+(i+1)+'_masse'], d['glocke_'+(i+1)+'_frq']].map(x=>String(x||'').trim()).filter(Boolean).join(', ')]),
+      ['Glockenanzahl',glockenListe(d).length||''],...glockenListe(d).map(n=>[glockeName(d,n), [d['glocke_'+n+'_masse'], d['glocke_'+n+'_frq']].map(x=>String(x||'').trim()).filter(Boolean).join(', ')]),
       ['Shaker-Signal',d.shaker_signal],['Shaker-Frequenz',d.shaker_frequenz],['Shaker-Kraft',d.shaker_kraft],['Shaker-Position',anschlagWert(o,d,'shaker_ort')],
       ['Unwuchterreger-Frequenz',d.unw_frequenz],['Unwuchtmoment',d.unw_moment],['Unwuchterreger-Position',d.unw_ort]], d.ergaenzungen_sonst),
     notizen: lines([['Spürbarkeit',d.spuerbarkeit],['Sekundäreffekte',d.sekundaer]], d.notizen_sonst) };
