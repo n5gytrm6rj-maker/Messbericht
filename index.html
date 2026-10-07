@@ -293,6 +293,7 @@ summary.nav-sum .st:active{background:var(--line)}
 .rv .k{min-width:0; -webkit-hyphens:auto; hyphens:auto; overflow-wrap:break-word}
 details.sek h4.sub.mit-linie{border-bottom:1px solid var(--line); padding-bottom:8px; margin-bottom:0}
 .mdetail .gruppe-linie{border-top:1px solid var(--line); margin:6px 0}
+.mdetail .gruppe-linie.fein{border-top-width:.5px; margin:4px 0}
 /* Runder Knopf „+“ unten rechts (100 pt) */
 .fab{position:fixed; right:max(16px, calc((100vw - 640px) / 2 + 16px)); bottom:max(16px, env(safe-area-inset-bottom,0px)); width:100px; height:100px; border-radius:50%; border:0; background:var(--signal); color:var(--signal-ink); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; box-shadow:0 6px 18px rgba(0,0,0,.22); z-index:12}
 .fab span{font-size:14px; font-weight:700; letter-spacing:-.01em}
@@ -564,7 +565,7 @@ const OBJEKT_STEPS = [
 function systemeVon(t){ const n=String((t&&t.systeme)||'').split(',').map(s=>s.trim()); return SYSTEME.filter(x=>n.includes(x.name)); }
 // Am Ende des Messobjekts folgt pro gewähltem Messsystem eine eigene Seite (Inhalte folgen noch)
 // Art der Anregung sowie Skizze und Fotos gelten für das ganze Messobjekt
-const ERREGUNGEN = ['Personen','Ambient Vibration','Impulshammer'];
+const ERREGUNGEN = ['Personen','Ambient Vibration','Impulshammer','Glocken','Shaker','Unwuchterreger'];
 const OBJEKT_TAIL = [
   {sec:'Messobjekt', q:'Art der Anregung', fields:[{k:'erregung', type:'text', ph:'oder frei eingeben', stack:true, chips:ERREGUNGEN, recent:true}]},
   {sec:'Messobjekt', q:'Skizze und Fotos', images:true}
@@ -645,7 +646,20 @@ const ERREGUNG_SEITEN = {
   'Impulshammer': {sec:'Anregung', q:'Anregung', fields:[
     {k:'hammer_typ', label:'Impulshammer', type:'text', ph:'z. B. 0,32 kg', chips:['klein','mittel','groß'], recent:true},
     {k:'hammer_ort', label:'Anschlagpunkt', type:'pos', quick:['0,25','0,33','0,50'], linAbh:true},
-    {k:'hammer_spitze', label:'Hammerspitze', type:'text', chips:['Gummi','Kunststoff','Stahl']}]}
+    {k:'hammer_spitze', label:'Hammerspitze', type:'text', chips:['Gummi','Kunststoff','Stahl']}]},
+  'Glocken': {sec:'Anregung', q:'Anregung', fields:[
+    {k:'glocken_anzahl', label:'Anzahl', type:'text', mode:'numeric', chips:['1','2','3','4','5']},
+    {k:'glocken_massen', label:'Massen', type:'text', ph:'z. B. 1200 kg / 800 kg'},
+    {k:'glocken_frequenzen', label:'Läutefrequenzen', type:'text', ph:'z. B. 0,75 Hz / 0,90 Hz'}]},
+  'Shaker': {sec:'Anregung', q:'Anregung', fields:[
+    {k:'shaker_signal', label:'Signal', type:'text', ph:'oder frei eingeben', chips:['Sinus','Sweep','Rauschen']},
+    {k:'shaker_frequenz', label:'Frequenz / Bereich', type:'text', ph:'z. B. 2–20 Hz'},
+    {k:'shaker_kraft', label:'Kraft / Amplitude', type:'text', ph:'z. B. 200 N'},
+    {k:'shaker_ort', label:'Position', type:'text', ph:'z. B. Feldmitte'}]},
+  'Unwuchterreger': {sec:'Anregung', q:'Anregung', fields:[
+    {k:'unw_frequenz', label:'Drehzahl / Frequenz', type:'text', ph:'z. B. 3 Hz'},
+    {k:'unw_moment', label:'Unwuchtmoment', type:'text', ph:'z. B. 0,5 kgm'},
+    {k:'unw_ort', label:'Position', type:'text', ph:'z. B. Feldmitte'}]}
 };
 const NOTIZ_SEITE = {sec:'Notizen', q:'Beobachtung', fields:[
   {k:'spuerbarkeit', label:'Spürbarkeit', type:'text', chips:['nicht spürbar','kaum spürbar','spürbar','deutlich spürbar','unangenehm']},
@@ -677,11 +691,11 @@ function ersteSeite(){
   const felder = (zug ? [{k:'zugkraft', label:'Zugkraft in kN', type:'text', mode:'decimal', ph:'z. B. 12,5'}] : []).concat(linear ? [notiz] : []);
   return felder.length ? {sec:'Messung', q: 'System', fields: felder} : null;
 }
-function messungSteps(){ return [ersteSeite()].filter(Boolean).concat(erregungenVon(objekt&&objekt.data).map(e=>ERREGUNG_SEITEN[e]), [NOTIZ_SEITE], arduinoSeite()); }
+function messungSteps(){ return [ersteSeite()].filter(Boolean).concat(erregungenVon(objekt&&objekt.data).map(e=>Object.assign({sub:e}, ERREGUNG_SEITEN[e])), [NOTIZ_SEITE], arduinoSeite()); }
 function zugkraftText(v){ const t=normDez(v); return t ? (/^[-+]?\d+(,\d+)?$/.test(t) ? t+' kN' : t) : ''; }
 // Diese Angaben schlägt eine neue Messung aus der vorherigen Messung am selben Messobjekt vor
 // Neue Messung übernimmt nur diese Angaben aus der vorherigen Messung am selben Objekt
-const UEBERNAHME = ['zugkraft','mess_notizen','personen','gewicht','p_art','hammer_typ','hammer_ort','hammer_ort_t','hammer_spitze'];
+const UEBERNAHME = ['zugkraft','mess_notizen','personen','gewicht','p_art','hammer_typ','hammer_ort','hammer_ort_t','hammer_spitze','glocken_anzahl','glocken_massen','glocken_frequenzen','shaker_signal','shaker_frequenz','shaker_kraft','shaker_ort','unw_frequenz','unw_moment','unw_ort'];
 // Anschlagpunkt: bei linearem Bauteil l [m] / ξ [-], sonst Freitext
 const anschlagWert = (o, d) => istLinear(o) ? posWert(d,'hammer_ort') : String((d&&d.hammer_ort_t)||'').trim();
 // Übernommene Angabe noch unverändert? Dann ersetzt die erste neue Auswahl sie komplett.
@@ -892,6 +906,11 @@ function pflichtFehlendKeys(t, o, d){
     if(leer(anschlagWert(o,d))) add('hammer_ort','Anschlagpunkt');
     if(leer(d.hammer_spitze)) add('hammer_spitze','Hammerspitze');
   }
+  if(erregungenVon(o).includes('Glocken')){
+    if(leer(d.glocken_anzahl)) add('glocken_anzahl','Glocken: Anzahl');
+    if(leer(d.glocken_massen)) add('glocken_massen','Glocken: Massen');
+    if(leer(d.glocken_frequenzen)) add('glocken_frequenzen','Glocken: Läutefrequenzen');
+  }
   if(sys.some(x=>x.id==='arduino') && !d.ard_keine) sensorenVon('arduino',o).forEach(nr=>{ if(leer(d['ard_datei_'+nr])) add('ard_datei_'+nr,'Arduino-Datei '+nr); });
   return f;
 }
@@ -1096,7 +1115,7 @@ async function showTermin(){
   textZuUebersicht();
   $('#oTitel').onclick = ()=>window.scrollTo({top:0, behavior:'smooth'});
   enableSwipe();
-  document.querySelectorAll('[data-tstep]').forEach(b=>b.onclick=()=>{ objektKontext=false; einzelEdit=showTermin; cur=termin; kind='termin'; step=+b.dataset.tstep; showStep(); });
+  document.querySelectorAll('[data-tstep]').forEach(b=>b.onclick=()=>{ objektKontext=false; einzelEdit=showTermin; cur=termin; kind='termin'; step=kategorieStart(+b.dataset.tstep); showStep(); });
   document.querySelectorAll('[data-obj]').forEach(b=>b.onclick=()=>{ if(selectMode){ gruppeUmschalten(messungenOfO(b.dataset.obj)); return showTermin(); } objekt=os.find(o=>o.id===b.dataset.obj); showObjekt(); });
   $('#moreBtn').onclick = ()=>popMenu(null, geheZu('termin').concat([
     {icon:shareIcon(), label:'Berichte erstellen', disabled:!alle.length, run:()=>exportStarten(showTermin, [])},
@@ -1160,8 +1179,8 @@ async function showObjekt(){
   $('#msTitel').onclick = ()=>{ if(selectMode) return; offeneMessung=null; showObjekt(); };
   const offen=document.querySelector('.mdetail'); if(offen && sprungZuOffen){ sprungZuOffen=false; }
   enableSwipe();
-  document.querySelectorAll('[data-tstep]').forEach(b=>b.onclick=()=>{ objektKontext=true; einzelEdit=showObjekt; cur=termin; kind='termin'; step=+b.dataset.tstep; showStep(); });
-  document.querySelectorAll('[data-ostep]').forEach(b=>b.onclick=()=>{ einzelEdit=showObjekt; cur=objekt; kind='objekt'; step=+b.dataset.ostep; showStep(); });
+  document.querySelectorAll('[data-tstep]').forEach(b=>b.onclick=()=>{ objektKontext=true; einzelEdit=showObjekt; cur=termin; kind='termin'; step=kategorieStart(+b.dataset.tstep); showStep(); });
+  document.querySelectorAll('[data-ostep]').forEach(b=>b.onclick=()=>{ einzelEdit=showObjekt; cur=objekt; kind='objekt'; step=kategorieStart(+b.dataset.ostep); showStep(); });
   $('#newMBtn') && ($('#newMBtn').onclick = newMessung);
   $('#selBtn') && ($('#selBtn').onclick = ()=>{ selectMode=!selectMode; selected.clear(); showObjekt(); });
   
@@ -1206,21 +1225,24 @@ async function showReview(){ if(cur && cur.oid) offeneMessung=cur.id; return sho
 function messungDetailHTML(m){
   const d=m.data, fm=fehlSet(termin.data, objekt.data, d);
   const titelVon = s => s.sec==='Messung' ? 'Systembeschreibung' : s.sec;
-  let h = `<button class="rv" data-korr="nummer" data-mid="${m.id}"><span class="k">Nummer</span><span class="v">${esc(d.nummer)}</span></button>
-    <button class="rv" data-korr="uhrzeit" data-mid="${m.id}"><span class="k">Uhrzeit</span><span class="v">${esc(d.uhrzeit)} Uhr</span></button>`;
-  let lastSec='';
+  // Kategorie (nur intern, ohne sichtbare Wirkung): Identifikation, Systembeschreibung, Anregung, Notizen, Arduino
+  const katVon = s => titelVon(s);
+  let h = `<button class="rv" data-kat="Identifikation" data-korr="nummer" data-mid="${m.id}"><span class="k">Nummer</span><span class="v">${esc(d.nummer)}</span></button>
+    <button class="rv" data-kat="Identifikation" data-korr="uhrzeit" data-mid="${m.id}"><span class="k">Uhrzeit</span><span class="v">${esc(d.uhrzeit)} Uhr</span></button>`;
+  let lastSec='', lastSub='';
   messungSteps().forEach((s,i)=>{ if(s.images) return; s.fields.forEach(f=>{
-    if(titelVon(s)!==lastSec){ h+=`<div class="gruppe-linie"></div>`; lastSec=titelVon(s); }
+    if(titelVon(s)!==lastSec){ h+=`<div class="gruppe-linie"></div>`; lastSec=titelVon(s); lastSub=s.sub||''; }
+    else if((s.sub||'')!==lastSub){ h+=`<div class="gruppe-linie fein"></div>`; lastSub=s.sub||''; }
     const v=f.k==='hammer_ort' ? anschlagWert(objekt.data,d) : f.type==='pos' ? posWert(d,f.k) : (f.pad ? padNr(d[f.k],4) : (d[f.k]||''));
     if(f.spiegel && d.ard_keine){ if(f.k===s.fields[0].k) h += `<button class="rv" data-go="${i}" data-mid="${m.id}"><span class="k">Arduino</span><span class="v">keine Messung erfolgt</span></button>`; return; }
     const anzeige = f.spiegel && v ? f.nr+'-'+v : f.k==='zugkraft' ? zugkraftText(v) : v;
-    h += `<button class="rv ${fm.has(f.k)?'fehlt':''}" data-go="${i}" data-mid="${m.id}"><span class="k">${esc(f.spiegel ? 'Arduino '+f.nr : f.k==='zugkraft' ? 'Zugkraft' : (f.label||s.q))}</span><span class="v">${anzeige?esc(anzeige):(fm.has(f.k)?'fehlt':'–')}</span></button>`;
+    h += `<button class="rv ${fm.has(f.k)?'fehlt':''}" data-kat="${katVon(s)}" ${s.sub?`data-sub="${esc(s.sub)}"`:''} data-go="${i}" data-mid="${m.id}"><span class="k">${esc(f.spiegel ? 'Arduino '+f.nr : f.k==='zugkraft' ? 'Zugkraft' : (f.label||s.q))}</span><span class="v">${anzeige?esc(anzeige):(fm.has(f.k)?'fehlt':'–')}</span></button>`;
   }); });
   return h;
 }
 function messungDetailBinden(ms){
   const zurueck = id => ()=>{ offeneMessung=id; cur=null; showObjekt(); };
-  document.querySelectorAll('[data-go][data-mid]').forEach(b=>b.onclick=()=>{ const m=ms.find(x=>x.id===b.dataset.mid); if(!m) return; cur=m; kind='messung'; einzelEdit=zurueck(m.id); step=+b.dataset.go; showStep(); });
+  document.querySelectorAll('[data-go][data-mid]').forEach(b=>b.onclick=()=>{ const m=ms.find(x=>x.id===b.dataset.mid); if(!m) return; cur=m; kind='messung'; einzelEdit=zurueck(m.id); step=kategorieStart(+b.dataset.go); showStep(); });
   document.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>{ const m=ms.find(x=>x.id===b.dataset.move); if(m) messungVerschieben(m); });
   // Nachträgliche Korrektur von Nummer und Uhrzeit (keine reguläre Abfrage)
   document.querySelectorAll('[data-korr][data-mid]').forEach(b=>b.onclick=()=>{
@@ -1357,7 +1379,7 @@ function terminZeilen(t, fehl){
     ['Name', t.name, 0, 'name', 1], ['Datum', fmtDate(t.datum), 1, 'datum'],
     ['Windgeschwindigkeit', t.windgeschwindigkeit, 2, '', 1], ['Windrichtung', t.windrichtung, 2, '', 1], ['Temperatur', fmtTemp(t.temperatur), 3],
     ['Firma', t.firma, 4, '', 1], ['Messleiter', t.messleiter, 4, 'messleiter'], ['Messsysteme', t.systeme, 5, 'systeme']
-  ].map(([l,v,i,k,ohne])=>`<button class="rv ${k&&fehl.has(k)?'fehlt':''} ${ohne?'nolinie':''}" data-tstep="${i}"><span class="k">${l}</span><span class="v">${v?esc(v):(k&&fehl.has(k)?'fehlt':'–')}</span></button>`).join('');
+  ].map(([l,v,i,k,ohne])=>`<button class="rv ${k&&fehl.has(k)?'fehlt':''} ${ohne?'nolinie':''}" data-kat="${['Messtermin','Messtermin','Witterung','Witterung','Institution','Messgeräte'][i]}" data-tstep="${i}"><span class="k">${l}</span><span class="v">${v?esc(v):(k&&fehl.has(k)?'fehlt':'–')}</span></button>`).join('');
 }
 // Liste der Messungen ist standardmäßig offen
 const zuListen = new Set();
@@ -1366,16 +1388,16 @@ const zuListen = new Set();
 function objektZeilen(o, oImgs, sysListe, fehl){
   fehl = fehl || new Set();
   return [['Messobjekt', o.messobjekt, 0], ['Zweck der Messung', o.zweck, 1]]
-    .map(([l,v,i])=>`<button class="rv ${fehl.has(['messobjekt','zweck'][i])?'fehlt':''} ${i===1?'nolinie':''} ${i===0?'nolinie':''}" data-ostep="${i}"><span class="k">${l}</span><span class="v">${v?esc(v):(fehl.has(['messobjekt','zweck'][i])?'fehlt':'–')}</span></button>${i===0?`<button class="rv" data-ostep="0"><span class="k">Lineares Bauteil</span><span class="v">${istLinear(o)?'ja':'nein'}</span></button>`:''}`).join('')
+    .map(([l,v,i])=>`<button class="rv ${fehl.has(['messobjekt','zweck'][i])?'fehlt':''} ${i===1?'nolinie':''} ${i===0?'nolinie':''}" data-kat="${i===0?'Messobjekt':'Zweck und Anregung'}" data-ostep="${i}"><span class="k">${l}</span><span class="v">${v?esc(v):(fehl.has(['messobjekt','zweck'][i])?'fehlt':'–')}</span></button>${i===0?`<button class="rv" data-kat="Messobjekt" data-ostep="0"><span class="k">Lineares Bauteil</span><span class="v">${istLinear(o)?'ja':'nein'}</span></button>`:''}`).join('')
     + `
-      <button class="rv ${fehl.has('erregung')?'fehlt':''}" data-ostep="${OBJEKT_STEPS.length}"><span class="k">Art der Anregung</span><span class="v">${o.erregung?esc(o.erregung):(fehl.has('erregung')?'fehlt':'–')}</span></button>
-      <button class="rv" data-ostep="${OBJEKT_STEPS.length+1}"><span class="k">Skizze und Fotos</span><span class="v">${oImgs.length?oImgs.length+' Bild'+(oImgs.length>1?'er':''):'–'}</span></button>`
+      <button class="rv ${fehl.has('erregung')?'fehlt':''}" data-kat="Zweck und Anregung" data-ostep="${OBJEKT_STEPS.length}"><span class="k">Art der Anregung</span><span class="v">${o.erregung?esc(o.erregung):(fehl.has('erregung')?'fehlt':'–')}</span></button>
+      <button class="rv" data-kat="Skizze und Fotos" data-ostep="${OBJEKT_STEPS.length+1}"><span class="k">Skizze und Fotos</span><span class="v">${oImgs.length?oImgs.length+' Bild'+(oImgs.length>1?'er':''):'–'}</span></button>`
     + `<h4 class="sub mit-linie">Messsysteme</h4>` + (sysListe.length
       ? sysListe.map(x=>{
           const sens=sensorenVon(x.id,o), du=val(o,'sys_'+x.id+'_dauer',SYS_CFG[x.id].dauer.def);
           const sTxt = SYS_CFG[x.id].sensorText ? sens.join('') : (sens.length ? 'Sensoren '+sens.join(', ') : 'keine Sensoren');
-          let h = `<button class="rv ${fehl.has('sys:'+x.id+':sens')?'fehlt':''} ${sens.length?'nolinie':''}" data-ostep="${stepIndex(x.id,1)}"><span class="k">${esc(x.name)}</span><span class="v">${esc([du,sTxt].filter(Boolean).join(', '))||'–'}</span></button>`;
-          if(sens.length) h += `<button class="rv ${fehl.has('sys:'+x.id+':ort')?'fehlt':''}" data-ostep="${stepIndex(x.id,2)}"><span class="k">Sensorstandort</span><span class="v">${esc(sens.map(nr=>(SYS_CFG[x.id].sensorText?'':nr+': ')+(posWert(o,ortKey(x.id,nr))||'–')).join('\n'))}</span></button>`;
+          let h = `<button class="rv ${fehl.has('sys:'+x.id+':sens')?'fehlt':''} ${sens.length?'nolinie':''}" data-kat="Messsysteme" data-ostep="${stepIndex(x.id,1)}"><span class="k">${esc(x.name)}</span><span class="v">${esc([du,sTxt].filter(Boolean).join(', '))||'–'}</span></button>`;
+          if(sens.length) h += `<button class="rv ${fehl.has('sys:'+x.id+':ort')?'fehlt':''}" data-kat="Messsysteme" data-ostep="${stepIndex(x.id,2)}"><span class="k">Sensorstandort</span><span class="v">${esc(sens.map(nr=>(SYS_CFG[x.id].sensorText?'':nr+': ')+(posWert(o,ortKey(x.id,nr))||'–')).join('\n'))}</span></button>`;
           return h; }).join('')
       : `<p class="muted small">Beim Messtermin sind keine Messsysteme ausgewählt.</p>`);
 }
@@ -1595,13 +1617,29 @@ async function showStep(){
       <button class="link-btn" id="backBtn" ${step===0?'disabled':''} aria-label="Zurück zu ${esc(step>0?STEPS[step-1].q:'')}">${backIcon()}<span>${esc(step>0?STEPS[step-1].q:'')}</span></button>
       <button class="link-btn right" id="skipBtn"><span>Überspringen</span>${skipIcon()}</button>
     </div>
-    <button class="btn primary" id="nextBtn">${einzelEdit?'Speichern':last?({termin:'Fertig', objekt:'Fertig', messung:'Übersicht'})[kind]:'Weiter'}</button></div></div>`;
+    <button class="btn primary" id="nextBtn">${einzelEdit?(naechsteInKategorie()>=0?'Weiter':'Speichern'):last?({termin:'Fertig', objekt:'Fertig', messung:'Übersicht'})[kind]:'Weiter'}</button></div></div>`;
   bindStep(s);
   window.scrollTo(0,0);
   if(!s.images){ const first=document.querySelector('.inp'); if(first && !('ontouchstart' in window)) first.focus(); }
 }
 // Befindet sich die Eingabe im Zusammenhang eines Messobjekts (z. B. Termin aus der Übersicht bearbeitet)?
 function imObjekt(){ const tid = kind==='termin' ? cur.id : (termin && termin.id); return !!(objekt && tid && objekt.tid===tid && (kind!=='termin' || objektKontext)); }
+// Kategorie einer Seite (für Nachbearbeitung: nach einer geänderten Angabe folgen die übrigen Seiten derselben Kategorie)
+function stepKat(s){
+  if(kind==='objekt'){ if(s.images) return 'Skizze'; if(s.sys) return 'sys:'+s.sys; return (s.q==='Zweck der Messung'||s.q==='Art der Anregung') ? 'ZA' : 'Messobjekt'; }
+  return s.sub || s.sec;
+}
+// Erste Seite der Kategorie, zu der die angetippte Seite gehört (Nachbearbeitung beginnt immer dort)
+function kategorieStart(i){
+  const ST=stepsOf(kind); if(!ST[i]) return i; const k=stepKat(ST[i]); let j=i;
+  while(j>0 && stepKat(ST[j-1])===k && (kind==='objekt' || ST[j-1].sec===ST[i].sec)) j--;
+  return j;
+}
+function naechsteInKategorie(){
+  const ST=stepsOf(kind), k=stepKat(ST[step]);
+  for(let j=step+1;j<ST.length;j++){ if(stepKat(ST[j])===k) return j; if(ST[j].sec!==ST[step].sec && kind!=='objekt') break; }
+  return -1;
+}
 function finishWizard(){ sitzung=null; einzelEdit=null; saveCur().then(()=> kind==='termin' ? (imObjekt() ? showObjekt() : showTermin()) : kind==='objekt' ? showObjekt() : showReview()); }
 
 function bindStep(s){
@@ -1619,7 +1657,9 @@ function bindStep(s){
       const doppelt = s.fields.filter(f=>f.dupCheck && !cur.data.ard_keine).map(f=>{ const n=dateiDoppelt(f.k, cur.data[f.k]); return n ? f.label+': '+padNr(cur.data[f.k],4)+' (Messung '+n+')' : null; }).filter(Boolean);
       if(doppelt.length && !confirm('Diese Dateibezeichnung ist im Messtermin schon vergeben:\n'+doppelt.join('\n')+'\n\nTrotzdem weiter?')) return;
     }
-    if(einzelEdit){ const ziel=einzelEdit; einzelEdit=null; sitzung=null; saveCur().then(()=>ziel()); return; }
+    if(einzelEdit){
+      const nx=naechsteInKategorie(); if(nx>=0){ saveCur(); step=nx; showStep(); return; }
+      const ziel=einzelEdit; einzelEdit=null; sitzung=null; saveCur().then(()=>ziel()); return; }
     saveCur(); if(step<stepsOf(kind).length-1){ step++; showStep(); } else finishWizard(); };
   // Arduino: Eintrag im ersten Feld gilt auch für die übrigen – solange diese nicht einzeln ausgefüllt wurden
   if(!s.images){
@@ -1829,7 +1869,10 @@ function reportFields(m){
     zweck:o.zweck, messobjekt:[o.messobjekt, o.objekt_notizen, d.mess_notizen, zugkraftText(d.zugkraft)?'Zugkraft: '+zugkraftText(d.zugkraft):''].filter(x=>String(x||'').trim()).join('\n'), ...geraeteFelder(t,d),
     ...sensorFelder(t,o,d), erregung:erregungText(o,d),
     ergaenzungen: lines([['Personenanzahl',d.personen],['Gewicht',d.gewicht],['Erkennbare Quellen',d.amb_quellen],
-      ['Impulshammer',d.hammer_typ],['Hammerspitze',d.hammer_spitze]], d.ergaenzungen_sonst),
+      ['Impulshammer',d.hammer_typ],['Hammerspitze',d.hammer_spitze],
+      ['Glocken (Anzahl)',d.glocken_anzahl],['Glockenmassen',d.glocken_massen],['Läutefrequenzen',d.glocken_frequenzen],
+      ['Shaker-Signal',d.shaker_signal],['Shaker-Frequenz',d.shaker_frequenz],['Shaker-Kraft',d.shaker_kraft],['Shaker-Position',d.shaker_ort],
+      ['Unwuchterreger-Frequenz',d.unw_frequenz],['Unwuchtmoment',d.unw_moment],['Unwuchterreger-Position',d.unw_ort]], d.ergaenzungen_sonst),
     notizen: lines([['Spürbarkeit',d.spuerbarkeit],['Sekundäreffekte',d.sekundaer]], d.notizen_sonst) };
 }
 // Messgeräte aus den beim Termin gewählten Systemen zusammensetzen
