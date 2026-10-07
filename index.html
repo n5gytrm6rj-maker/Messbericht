@@ -648,14 +648,12 @@ const ERREGUNG_SEITEN = {
     {k:'hammer_ort', label:'Anschlagpunkt', type:'pos', quick:['0,25','0,33','0,50'], linAbh:true},
     {k:'hammer_spitze', label:'Hammerspitze', type:'text', chips:['Gummi','Kunststoff','Stahl']}]},
   'Glocken': {sec:'Anregung', q:'Anregung', fields:[
-    {k:'glocken_anzahl', label:'Anzahl', type:'text', mode:'numeric', chips:['1','2','3','4','5']},
-    {k:'glocken_massen', label:'Massen', type:'text', ph:'z. B. 1200 kg / 800 kg'},
-    {k:'glocken_frequenzen', label:'Läutefrequenzen', type:'text', ph:'z. B. 0,75 Hz / 0,90 Hz'}]},
+    {k:'glocken_anzahl', label:'Glockenanzahl', type:'text', mode:'numeric', chips:['1','2','3','4','5','6','7']}]},
   'Shaker': {sec:'Anregung', q:'Anregung', fields:[
     {k:'shaker_signal', label:'Signal', type:'text', ph:'oder frei eingeben', chips:['Sinus','Sweep','Rauschen']},
     {k:'shaker_frequenz', label:'Frequenz / Bereich', type:'text', ph:'z. B. 2–20 Hz'},
     {k:'shaker_kraft', label:'Kraft / Amplitude', type:'text', ph:'z. B. 200 N'},
-    {k:'shaker_ort', label:'Position', type:'text', ph:'z. B. Feldmitte'}]},
+    {k:'shaker_ort', label:'Position', type:'pos', quick:['0,25','0,33','0,50'], linAbh:true}]},
   'Unwuchterreger': {sec:'Anregung', q:'Anregung', fields:[
     {k:'unw_frequenz', label:'Drehzahl / Frequenz', type:'text', ph:'z. B. 3 Hz'},
     {k:'unw_moment', label:'Unwuchtmoment', type:'text', ph:'z. B. 0,5 kgm'},
@@ -691,13 +689,26 @@ function ersteSeite(){
   const felder = (zug ? [{k:'zugkraft', label:'Zugkraft in kN', type:'text', mode:'decimal', ph:'z. B. 12,5'}] : []).concat(linear ? [notiz] : []);
   return felder.length ? {sec:'Messung', q: 'System', fields: felder} : null;
 }
-function messungSteps(){ return [ersteSeite()].filter(Boolean).concat(erregungenVon(objekt&&objekt.data).map(e=>Object.assign({sub:e}, ERREGUNG_SEITEN[e])), [NOTIZ_SEITE], arduinoSeite()); }
+// Glocken: nach der Anzahl folgt je Glocke eine eigene Seite (Masse, Läutefrequenz)
+const glockenN = d => Math.max(0, Math.min(20, parseInt(d&&d.glocken_anzahl)||0));
+function glockenSeiten(d){
+  const out=[]; for(let n=1;n<=glockenN(d);n++) out.push({sec:'Anregung', sub:'Glocken', q:'Glocke '+n, fields:[
+    {k:'glocke_'+n+'_masse', label:'Masse', dlabel:'Glocke '+n+': Masse', type:'text', ph:'z. B. 1200 kg'},
+    {k:'glocke_'+n+'_frq', label:'Läutefrequenz', dlabel:'Glocke '+n+': Läutefrequenz', type:'text', ph:'z. B. 0,75 Hz'}]});
+  return out;
+}
+function messungSteps(d){
+  d = d || (cur&&cur.data) || {};
+  const seiten=[];
+  erregungenVon(objekt&&objekt.data).forEach(e=>{ seiten.push(Object.assign({sub:e}, ERREGUNG_SEITEN[e])); if(e==='Glocken') seiten.push(...glockenSeiten(d)); });
+  return [ersteSeite()].filter(Boolean).concat(seiten, [NOTIZ_SEITE], arduinoSeite());
+}
 function zugkraftText(v){ const t=normDez(v); return t ? (/^[-+]?\d+(,\d+)?$/.test(t) ? t+' kN' : t) : ''; }
 // Diese Angaben schlägt eine neue Messung aus der vorherigen Messung am selben Messobjekt vor
 // Neue Messung übernimmt nur diese Angaben aus der vorherigen Messung am selben Objekt
-const UEBERNAHME = ['zugkraft','mess_notizen','personen','gewicht','p_art','hammer_typ','hammer_ort','hammer_ort_t','hammer_spitze','glocken_anzahl','glocken_massen','glocken_frequenzen','shaker_signal','shaker_frequenz','shaker_kraft','shaker_ort','unw_frequenz','unw_moment','unw_ort'];
+const UEBERNAHME = ['zugkraft','mess_notizen','personen','gewicht','p_art','hammer_typ','hammer_ort','hammer_ort_t','hammer_spitze','glocken_anzahl','shaker_signal','shaker_frequenz','shaker_kraft','shaker_ort','shaker_ort_t','shaker_ort_z','shaker_ort_e','unw_frequenz','unw_moment','unw_ort'].concat(Array.from({length:20},(_,i)=>['glocke_'+(i+1)+'_masse','glocke_'+(i+1)+'_frq']).flat());
 // Anschlagpunkt: bei linearem Bauteil l [m] / ξ [-], sonst Freitext
-const anschlagWert = (o, d) => istLinear(o) ? posWert(d,'hammer_ort') : String((d&&d.hammer_ort_t)||'').trim();
+const anschlagWert = (o, d, k) => { k=k||'hammer_ort'; return istLinear(o) ? posWert(d,k) : String((d&&d[k+'_t'])||'').trim(); };
 // Übernommene Angabe noch unverändert? Dann ersetzt die erste neue Auswahl sie komplett.
 const istUebernommen = k => !!(cur && cur.carried && cur.carried.includes(k));
 function uebernahmeEnde(k){ if(!istUebernommen(k)) return; cur.carried = cur.carried.filter(x=>x!==k); document.querySelectorAll(`[data-carry="${k}"]`).forEach(e=>e.remove()); }
@@ -908,8 +919,10 @@ function pflichtFehlendKeys(t, o, d){
   }
   if(erregungenVon(o).includes('Glocken')){
     if(leer(d.glocken_anzahl)) add('glocken_anzahl','Glocken: Anzahl');
-    if(leer(d.glocken_massen)) add('glocken_massen','Glocken: Massen');
-    if(leer(d.glocken_frequenzen)) add('glocken_frequenzen','Glocken: Läutefrequenzen');
+    for(let n=1;n<=glockenN(d);n++){
+      if(leer(d['glocke_'+n+'_masse'])) add('glocke_'+n+'_masse','Glocke '+n+': Masse');
+      if(leer(d['glocke_'+n+'_frq'])) add('glocke_'+n+'_frq','Glocke '+n+': Läutefrequenz');
+    }
   }
   if(sys.some(x=>x.id==='arduino') && !d.ard_keine) sensorenVon('arduino',o).forEach(nr=>{ if(leer(d['ard_datei_'+nr])) add('ard_datei_'+nr,'Arduino-Datei '+nr); });
   return f;
@@ -1115,7 +1128,7 @@ async function showTermin(){
   textZuUebersicht();
   $('#oTitel').onclick = ()=>window.scrollTo({top:0, behavior:'smooth'});
   enableSwipe();
-  document.querySelectorAll('[data-tstep]').forEach(b=>b.onclick=()=>{ objektKontext=false; einzelEdit=showTermin; cur=termin; kind='termin'; step=kategorieStart(+b.dataset.tstep); showStep(); });
+  document.querySelectorAll('[data-tstep]').forEach(b=>b.onclick=()=>{ objektKontext=false; einzelEdit=showTermin; cur=termin; kind='termin'; nurSeite=b.classList.contains('fehlt'); step=nurSeite?+b.dataset.tstep:kategorieStart(+b.dataset.tstep); showStep(); });
   document.querySelectorAll('[data-obj]').forEach(b=>b.onclick=()=>{ if(selectMode){ gruppeUmschalten(messungenOfO(b.dataset.obj)); return showTermin(); } objekt=os.find(o=>o.id===b.dataset.obj); showObjekt(); });
   $('#moreBtn').onclick = ()=>popMenu(null, geheZu('termin').concat([
     {icon:shareIcon(), label:'Berichte erstellen', disabled:!alle.length, run:()=>exportStarten(showTermin, [])},
@@ -1179,8 +1192,8 @@ async function showObjekt(){
   $('#msTitel').onclick = ()=>{ if(selectMode) return; offeneMessung=null; showObjekt(); };
   const offen=document.querySelector('.mdetail'); if(offen && sprungZuOffen){ sprungZuOffen=false; }
   enableSwipe();
-  document.querySelectorAll('[data-tstep]').forEach(b=>b.onclick=()=>{ objektKontext=true; einzelEdit=showObjekt; cur=termin; kind='termin'; step=kategorieStart(+b.dataset.tstep); showStep(); });
-  document.querySelectorAll('[data-ostep]').forEach(b=>b.onclick=()=>{ einzelEdit=showObjekt; cur=objekt; kind='objekt'; step=kategorieStart(+b.dataset.ostep); showStep(); });
+  document.querySelectorAll('[data-tstep]').forEach(b=>b.onclick=()=>{ objektKontext=true; einzelEdit=showObjekt; cur=termin; kind='termin'; nurSeite=b.classList.contains('fehlt'); step=nurSeite?+b.dataset.tstep:kategorieStart(+b.dataset.tstep); showStep(); });
+  document.querySelectorAll('[data-ostep]').forEach(b=>b.onclick=()=>{ einzelEdit=showObjekt; cur=objekt; kind='objekt'; nurSeite=b.classList.contains('fehlt'); step=nurSeite?+b.dataset.ostep:kategorieStart(+b.dataset.ostep); showStep(); });
   $('#newMBtn') && ($('#newMBtn').onclick = newMessung);
   $('#selBtn') && ($('#selBtn').onclick = ()=>{ selectMode=!selectMode; selected.clear(); showObjekt(); });
   
@@ -1230,19 +1243,19 @@ function messungDetailHTML(m){
   let h = `<button class="rv" data-kat="Identifikation" data-korr="nummer" data-mid="${m.id}"><span class="k">Nummer</span><span class="v">${esc(d.nummer)}</span></button>
     <button class="rv" data-kat="Identifikation" data-korr="uhrzeit" data-mid="${m.id}"><span class="k">Uhrzeit</span><span class="v">${esc(d.uhrzeit)} Uhr</span></button>`;
   let lastSec='', lastSub='';
-  messungSteps().forEach((s,i)=>{ if(s.images) return; s.fields.forEach(f=>{
+  messungSteps(d).forEach((s,i)=>{ if(s.images) return; s.fields.forEach(f=>{
     if(titelVon(s)!==lastSec){ h+=`<div class="gruppe-linie"></div>`; lastSec=titelVon(s); lastSub=s.sub||''; }
     else if((s.sub||'')!==lastSub){ h+=`<div class="gruppe-linie fein"></div>`; lastSub=s.sub||''; }
-    const v=f.k==='hammer_ort' ? anschlagWert(objekt.data,d) : f.type==='pos' ? posWert(d,f.k) : (f.pad ? padNr(d[f.k],4) : (d[f.k]||''));
+    const v=f.linAbh ? anschlagWert(objekt.data,d,f.k) : f.type==='pos' ? posWert(d,f.k) : (f.pad ? padNr(d[f.k],4) : (d[f.k]||''));
     if(f.spiegel && d.ard_keine){ if(f.k===s.fields[0].k) h += `<button class="rv" data-go="${i}" data-mid="${m.id}"><span class="k">Arduino</span><span class="v">keine Messung erfolgt</span></button>`; return; }
     const anzeige = f.spiegel && v ? f.nr+'-'+v : f.k==='zugkraft' ? zugkraftText(v) : v;
-    h += `<button class="rv ${fm.has(f.k)?'fehlt':''}" data-kat="${katVon(s)}" ${s.sub?`data-sub="${esc(s.sub)}"`:''} data-go="${i}" data-mid="${m.id}"><span class="k">${esc(f.spiegel ? 'Arduino '+f.nr : f.k==='zugkraft' ? 'Zugkraft' : (f.label||s.q))}</span><span class="v">${anzeige?esc(anzeige):(fm.has(f.k)?'fehlt':'–')}</span></button>`;
+    h += `<button class="rv ${fm.has(f.k)?'fehlt':''}" data-kat="${katVon(s)}" ${s.sub?`data-sub="${esc(s.sub)}"`:''} data-go="${i}" data-mid="${m.id}"><span class="k">${esc(f.spiegel ? 'Arduino '+f.nr : f.k==='zugkraft' ? 'Zugkraft' : (f.dlabel||f.label||s.q))}</span><span class="v">${anzeige?esc(anzeige):(fm.has(f.k)?'fehlt':'–')}</span></button>`;
   }); });
   return h;
 }
 function messungDetailBinden(ms){
   const zurueck = id => ()=>{ offeneMessung=id; cur=null; showObjekt(); };
-  document.querySelectorAll('[data-go][data-mid]').forEach(b=>b.onclick=()=>{ const m=ms.find(x=>x.id===b.dataset.mid); if(!m) return; cur=m; kind='messung'; einzelEdit=zurueck(m.id); step=kategorieStart(+b.dataset.go); showStep(); });
+  document.querySelectorAll('[data-go][data-mid]').forEach(b=>b.onclick=()=>{ const m=ms.find(x=>x.id===b.dataset.mid); if(!m) return; cur=m; kind='messung'; einzelEdit=zurueck(m.id); nurSeite=b.classList.contains('fehlt'); step=nurSeite?+b.dataset.go:kategorieStart(+b.dataset.go); showStep(); });
   document.querySelectorAll('[data-move]').forEach(b=>b.onclick=()=>{ const m=ms.find(x=>x.id===b.dataset.move); if(m) messungVerschieben(m); });
   // Nachträgliche Korrektur von Nummer und Uhrzeit (keine reguläre Abfrage)
   document.querySelectorAll('[data-korr][data-mid]').forEach(b=>b.onclick=()=>{
@@ -1635,7 +1648,9 @@ function kategorieStart(i){
   while(j>0 && stepKat(ST[j-1])===k && (kind==='objekt' || ST[j-1].sec===ST[i].sec)) j--;
   return j;
 }
+let nurSeite=false; // fehlende Angabe angetippt → nur diese Seite abfragen
 function naechsteInKategorie(){
+  if(nurSeite) return -1;
   const ST=stepsOf(kind), k=stepKat(ST[step]);
   for(let j=step+1;j<ST.length;j++){ if(stepKat(ST[j])===k) return j; if(ST[j].sec!==ST[step].sec && kind!=='objekt') break; }
   return -1;
@@ -1870,8 +1885,8 @@ function reportFields(m){
     ...sensorFelder(t,o,d), erregung:erregungText(o,d),
     ergaenzungen: lines([['Personenanzahl',d.personen],['Gewicht',d.gewicht],['Erkennbare Quellen',d.amb_quellen],
       ['Impulshammer',d.hammer_typ],['Hammerspitze',d.hammer_spitze],
-      ['Glocken (Anzahl)',d.glocken_anzahl],['Glockenmassen',d.glocken_massen],['Läutefrequenzen',d.glocken_frequenzen],
-      ['Shaker-Signal',d.shaker_signal],['Shaker-Frequenz',d.shaker_frequenz],['Shaker-Kraft',d.shaker_kraft],['Shaker-Position',d.shaker_ort],
+      ['Glockenanzahl',d.glocken_anzahl],...Array.from({length:glockenN(d)},(_,i)=>['Glocke '+(i+1), [d['glocke_'+(i+1)+'_masse'], d['glocke_'+(i+1)+'_frq']].map(x=>String(x||'').trim()).filter(Boolean).join(', ')]),
+      ['Shaker-Signal',d.shaker_signal],['Shaker-Frequenz',d.shaker_frequenz],['Shaker-Kraft',d.shaker_kraft],['Shaker-Position',anschlagWert(o,d,'shaker_ort')],
       ['Unwuchterreger-Frequenz',d.unw_frequenz],['Unwuchtmoment',d.unw_moment],['Unwuchterreger-Position',d.unw_ort]], d.ergaenzungen_sonst),
     notizen: lines([['Spürbarkeit',d.spuerbarkeit],['Sekundäreffekte',d.sekundaer]], d.notizen_sonst) };
 }
