@@ -114,6 +114,14 @@ textarea.inp{min-height:110px; resize:vertical}
 
 /* Übersicht */
 .review h3{font-size:15px; color:var(--steel); margin:22px 0 4px}
+.einst details.sek{border-bottom-width:.5px; margin-left:18px}
+.einst details.sek > summary .st{height:auto; padding:0; border-radius:0; background:none; font-size:17px; font-weight:600; color:var(--ink)}
+[data-resetsys]{background:var(--fill); border-color:transparent; box-shadow:none; margin:6px 0 4px}
+.del-link{display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:44px; margin:2px 0 14px; padding:0; background:none; border:0; color:var(--danger); font-size:17px; font-weight:600}
+.del-link svg{flex:none; height:20px; width:auto}
+.review h3.set-hplus{display:flex; align-items:center; justify-content:space-between; padding-bottom:4px}
+.plus-btn{flex:none; width:44px; height:44px; padding:10px; box-sizing:border-box; border:0; border-radius:50%; background:var(--fill); color:var(--ink); display:grid; place-items:center}
+.review h3.set-h{font-size:20px; font-weight:700; margin:30px 0 8px; padding-bottom:8px; border-bottom:1px solid var(--line)}
 .rv{color:inherit; font:inherit; display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); background:none; border-left:0; border-right:0; border-top:0; width:100%; text-align:left}
 .rv .k{flex:0 0 42%; color:var(--muted); font-size:15px}
 .rv .v{flex:1; white-space:pre-wrap; word-break:break-word}
@@ -375,6 +383,11 @@ details.sek[data-sek] > .rv, details.sek[data-sek] > h4.sub{margin-left:18px; wi
 .prow.saus .inp, .prow.saus .seg2{opacity:.35}
 .prow.oben .stog{margin-top:8px}
 /* „x“ zum Leeren von Freitextfeldern */
+.unitwrap{position:relative; display:block}
+.unitwrap > .inp{width:100%}
+.unit{display:none; position:absolute; left:15.5px; top:50%; transform:translateY(-50%); font-size:19px; white-space:pre; color:var(--muted); pointer-events:none}
+.unit .uv{visibility:hidden}
+.unitwrap.ue:not(:focus-within) .unit{display:block}
 .xwrap{position:relative; display:block; flex:1; min-width:0}
 .xwrap > .inp{width:100%; padding-right:38px}
 .xbtn{position:absolute; right:8px; top:50%; transform:translateY(-50%); width:28px; height:28px; padding:0; border:0; background:none; color:#c7c7cc; display:none; place-items:center}
@@ -491,7 +504,7 @@ document.addEventListener('click', e=>{
 // Freitextfelder: iOS-typisches „x“ (xmark.circle.fill) zum Leeren des ganzen Feldes
 const X_SVG='<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="9" fill="currentColor"/><path d="M6 6l6 6M12 6l-6 6" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>';
 function loeschKreuze(){
-  document.querySelectorAll('#app input.inp[type="text"]:not([inputmode="decimal"]):not([inputmode="numeric"]):not(.dinp), #app textarea.inp').forEach(el=>{
+  document.querySelectorAll('#app input.inp[type="text"]:not([inputmode="decimal"]):not([inputmode="numeric"]):not(.dinp):not(.uinp), #app textarea.inp').forEach(el=>{
     if(el.dataset.x) return; el.dataset.x='1';
     const w=document.createElement('span'); w.className='xwrap'+(el.tagName==='TEXTAREA'?' xta':'');
     el.parentNode.insertBefore(w, el); w.appendChild(el);
@@ -505,7 +518,19 @@ function loeschKreuze(){
 }
 new MutationObserver(()=>setTimeout(loeschKreuze,0)).observe(document.getElementById('app'),{childList:true});
 // Werte, die per Schnellwahl gesetzt werden, lösen kein input-Ereignis aus → nach jedem Tipp alle „x“ nachziehen
-const xAktualisieren=()=>document.querySelectorAll('#app .xwrap > .inp').forEach(el=>el._xupd && el._xupd());
+const xAktualisieren=()=>{ document.querySelectorAll('#app .xwrap > .inp').forEach(el=>el._xupd && el._xupd());
+  // Einheit direkt hinter der Zahl anzeigen, sobald das Feld verlassen wird (nicht bei Text, z. B. „klein“)
+  document.querySelectorAll('#app .unitwrap').forEach(w=>{ const i=w.querySelector('.inp'); if(!i) return; const u=w.querySelector('.uv'); if(u) u.textContent=i.value; w.classList.toggle('ue', /\d/.test(i.value) && !/[A-Za-zÄÖÜäöüß]/.test(i.value)); }); };
+// Felder mit fester Einheit (außer Impulshammer): nur Zahlen (Ziffern, Komma, Minus) zulassen
+document.addEventListener('input', e=>{ const el=e.target; if(el && el.dataset && el.dataset.num){ const v=el.value.replace(/\./g,',').replace(/[^\d,\-]/g,''); if(v!==el.value) el.value=v; } }, true);
+document.addEventListener('input', xAktualisieren);
+// Läutefrequenz / Windgeschwindigkeit: Info live zeigen, beim Verlassen des Feldes Schreibweise vereinheitlichen und Zahlenwert/Einheit speichern
+document.addEventListener('input', e=>{ const el=e.target; const art=el&&el.dataset?parseArt(el.dataset.k):''; if(art){ const p=document.querySelector(`[data-frqinfo="${el.dataset.k}"]`); if(p) p.textContent=wertInfo(el.value,art); } });
+document.addEventListener('change', e=>{ const el=e.target; const art=el&&el.dataset?parseArt(el.dataset.k):''; if(!art || typeof cur==='undefined' || !cur) return;
+  const k=el.dataset.k, p=wertParse(el.value,art);
+  if(p.ok){ const neu=p.z+(p.e?' '+p.e:''); cur.data[k+'_z']=p.z; cur.data[k+'_e']=p.e; if(neu!==el.value){ el.value=neu; el.dispatchEvent(new Event('input',{bubbles:true})); } }
+  else { delete cur.data[k+'_z']; delete cur.data[k+'_e']; }
+  const i=document.querySelector(`[data-frqinfo="${k}"]`); if(i) i.textContent=wertInfo(el.value,art); });
 document.addEventListener('click', ()=>setTimeout(xAktualisieren,0));
 document.addEventListener('change', ()=>setTimeout(xAktualisieren,0));
 // Fenster (Aktionsblätter) im iOS-Stil
@@ -514,11 +539,12 @@ document.documentElement.classList.add('sheet-ios');
 const TEMPLATE_B64 = "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";
 
 /* ---------- Einstellungen ---------- */
-const SYSTEME = [
+const SYSTEME_BASIS = [
   {id:'ni', name:'National Instruments'},
   {id:'arduino', name:'Arduino'},
   {id:'phyphox', name:'Phyphox'}
 ];
+const SYSTEME = SYSTEME_BASIS.slice();   // Basissysteme + selbst angelegte (settings.custom), siehe syncSysteme()
 // Gerätedaten pro Messsystem: landen im Bericht unter „Messgeräte“
 const SYS_DEFAULTS = {
   ni:      {geraetetyp:'National Instruments', aafilter:'', abtastrate:'', sensoren:'71, 72, 73, 74, 75, 76'},
@@ -526,14 +552,15 @@ const SYS_DEFAULTS = {
   phyphox: {geraetetyp:'Phyphox (Smartphone-App)', aafilter:'', abtastrate:'', sensor:'iPhone13,1, (26.6.1)'}
 };
 const DEFAULTS = { firma:'TU München', messleiter:'Clemens Koller' };
-function freshSettings(){ return Object.assign({}, DEFAULTS, {sys: JSON.parse(JSON.stringify(SYS_DEFAULTS))}); }
+function freshSettings(){ return Object.assign({}, DEFAULTS, {sys: JSON.parse(JSON.stringify(SYS_DEFAULTS)), custom:[]}); }
 function loadSettings(){
   const s = freshSettings();
   try{
     const st = JSON.parse(localStorage.getItem('mb_settings')||'{}');
     if(st.firma!=null) s.firma=st.firma;
     if(st.messleiter!=null) s.messleiter=st.messleiter;
-    if(st.sys) for(const k in s.sys) Object.assign(s.sys[k], st.sys[k]||{});
+    if(Array.isArray(st.custom)) s.custom = st.custom.filter(c=>c && c.id && c.name);
+    if(st.sys) for(const k in st.sys) s.sys[k] = Object.assign(s.sys[k]||{}, st.sys[k]||{});
     // Frühere Arduino-Voreinstellungen aus der Word-Vorlage entfernen, sofern unverändert gespeichert
     const alt = {geraetetyp:'MPU 6050 – Beschleunigungssensor ±4g\nArduino, MKR ZERO - Mikrocontroller', aafilter:'94 Hz (Tiefpassfilter)', abtastrate:'200 Hz (1/0.005s)'};
     for(const k in alt) if(s.sys.arduino[k]===alt[k]) s.sys.arduino[k]=SYS_DEFAULTS.arduino[k];
@@ -550,11 +577,11 @@ const TERMIN_STEPS = [
   {sec:'Messtermin', q:'Name des Messtermins', fields:[{k:'name', type:'text', ph:'z. B. Brücke Isar, Versuchsreihe 1', recent:true}]},
   {sec:'Messtermin', q:'Datum', fields:[{k:'datum', type:'date'}], today:true},
   {sec:'Witterung', q:'Wind', fields:[
-    {k:'windgeschwindigkeit', label:'Windgeschwindigkeit', type:'text', ph:'z. B. ca. 3 m/s', chips:['windstill','schwach','mäßig','stark','böig']},
+    {k:'windgeschwindigkeit', label:'Windgeschwindigkeit', type:'text', parse:'wind', ph:'z. B. 3 m/s oder 11 km/h', chips:['windstill','schwach','mäßig','stark','böig']},
     {k:'windrichtung', label:'Windrichtung', type:'compass'}]},
-  {sec:'Witterung', q:'Temperatur', fields:[{k:'temperatur', type:'text', mode:'decimal', ph:'in °C'}]},
+  {sec:'Witterung', q:'Temperatur', fields:[{k:'temperatur', type:'text', mode:'decimal', unit:'°C', ph:'Temperatur [°C]'}]},
   {sec:'Institution', q:'Firma und Messleiter', fields:[{k:'firma', label:'Firma', type:'text', recent:true},{k:'messleiter', label:'Messleiter', type:'text', recent:true}]},
-  {sec:'Messgeräte', q:'Messsysteme', fields:[{k:'systeme', type:'text', toggle:true, chipsOnly:true, stack:true, hint:'Mehrfachauswahl möglich', chips:SYSTEME.map(x=>x.name), icons:{'National Instruments':'daq','Arduino':'chip','Phyphox':'phone'}}]}
+  {sec:'Messgeräte', q:'Messsysteme', fields:[{k:'systeme', type:'text', toggle:true, chipsOnly:true, stack:true, hint:'Mehrfachauswahl möglich', get chips(){ const l=SYSTEME.map(x=>x.name), g=(typeof cur!=='undefined'&&cur&&cur.data&&cur.data.geraete)||{}; Object.values(g).forEach(r=>{ if(r&&r.name&&!l.includes(r.name)) l.push(r.name); }); return l; }, get icons(){ const o={'National Instruments':'daq','Arduino':'chip','Phyphox':'phone'}; SYSTEME.filter(x=>x.custom).forEach(x=>{ o[x.name]='daq'; }); const g=(typeof cur!=='undefined'&&cur&&cur.data&&cur.data.geraete)||{}; Object.values(g).forEach(r=>{ if(r&&r.name&&!o[r.name]) o[r.name]='daq'; }); return o; }}]}
 ];
 // Messobjekt innerhalb eines Termins
 const OBJEKT_STEPS = [
@@ -562,7 +589,35 @@ const OBJEKT_STEPS = [
   {sec:'Messobjekt', q:'Zweck der Messung', fields:[{k:'zweck', type:'textarea', ph:'oder frei eingeben', toggle:true, chips:['Zugkraftermittlung','Eigenfrequenzanalyse','Amplitudenmessung'], stack:true, recent:true}]}
 ];
 // Beim Termin gewählte Messsysteme (in fester Reihenfolge)
-function systemeVon(t){ const n=String((t&&t.systeme)||'').split(',').map(s=>s.trim()); return SYSTEME.filter(x=>n.includes(x.name)); }
+// Messsystem-Daten gehören zum Messtermin (Kopie der Einstellungen zum Zeitpunkt der Wahl): t.geraete[id]
+const curT = () => termin && termin.data;
+const snapVon = (t, name) => { const g=t&&t.geraete; if(!g) return null; for(const id in g) if(g[id] && g[id].name===name) return g[id]; return null; };
+function sysRec(id, t){ if(t===undefined) t=curT(); return (t && t.geraete && t.geraete[id]) || settings.sys[id] || {}; }
+function systemeVon(t){
+  const n=String((t&&t.systeme)||'').split(',').map(s=>s.trim()).filter(Boolean), res=[], seen=new Set();
+  const namen=SYSTEME.map(x=>x.name); n.forEach(x=>{ if(!namen.includes(x)) namen.push(x); });
+  for(const name of namen){
+    if(!n.includes(name)) continue;
+    const sn=snapVon(t,name), lok=SYSTEME.find(x=>x.name===name);
+    const x = sn ? {id:sn.id, name, custom:!!sn.custom} : lok;
+    if(!x || seen.has(x.id)) continue;
+    if(!SYS_CFG[x.id]) SYS_CFG[x.id]={ dauer:{def:'10 s', chips:['10 s','30 s','60 s','120 s']}, sensoren:['1','2','3'] };
+    seen.add(x.id); res.push(x);
+  }
+  return res;
+}
+// Kopie der Einstellungen für gewählte Systeme in den Termin übernehmen (bestehende Kopien bleiben unverändert)
+function geraeteSync(rec){
+  const d=rec.data, n=String(d.systeme||'').split(',').map(s=>s.trim()).filter(Boolean); let ch=false;
+  const g=d.geraete || {};
+  for(const x of SYSTEME){
+    if(n.includes(x.name) && !g[x.id] && !snapVon(d,x.name) && settings.sys[x.id]){
+      g[x.id]=Object.assign(JSON.parse(JSON.stringify(settings.sys[x.id])),{id:x.id,name:x.name,custom:!!x.custom}); ch=true; }
+  }
+  // abgewählte Systeme behalten ihre Kopie (unsichtbar, nicht im Bericht) – bei erneuter Wahl ist alles wieder da
+  if(ch||d.geraete) d.geraete=g;
+  return ch;
+}
 // Am Ende des Messobjekts folgt pro gewähltem Messsystem eine eigene Seite (Inhalte folgen noch)
 // Art der Anregung sowie Skizze und Fotos gelten für das ganze Messobjekt
 const ERREGUNGEN = ['Personen','Ambient Vibration','Impulshammer','Glocken','Shaker','Unwuchterreger'];
@@ -576,16 +631,26 @@ const SYS_CFG = {
   arduino: { dauer:{def:'variabel', chips:['variabel','60 s','120 s','300 s']}, sensoren:['01','02','03'] },
   phyphox: { dauer:{def:'41,0 s', chips:['1,3 s','2,5 s','5,1 s','10,2 s','20,5 s','41,0 s']}, sensorText:'iPhone13,1, (26.6.1)' }
 };
+// Selbst angelegte Messsysteme (Einstellungen → Messsysteme → +) in die Systemliste übernehmen
+function syncSysteme(){
+  SYSTEME.length=0; SYSTEME_BASIS.forEach(x=>SYSTEME.push(x));
+  (settings.custom||[]).forEach(c=>{
+    SYSTEME.push({id:c.id, name:c.name, custom:true});
+    if(!SYS_CFG[c.id]) SYS_CFG[c.id]={ dauer:{def:'10 s', chips:['10 s','30 s','60 s','120 s']}, sensoren:['1','2','3'] };
+    if(!settings.sys[c.id]) settings.sys[c.id]={geraetetyp:c.name, aafilter:'', abtastrate:'', sensoren:'1, 2, 3'};
+  });
+}
+syncSysteme();
 // Gespeicherter Wert oder – solange nie etwas eingetragen wurde – die Voreinstellung
 const val = (o, k, def) => (o && o[k]!==undefined) ? o[k] : def;
 // Sensornummern kommen aus den Einstellungen (⚙︎) und lassen sich dort ändern
 const splitListe = s => String(s||'').split(',').map(x=>x.trim()).filter(Boolean);
-function sensorListe(id){ const l=splitListe(settings.sys[id] && settings.sys[id].sensoren); return l.length ? l : (SYS_CFG[id].sensoren||[]); }
-function sensorDefault(id){ return (settings.sys[id] && settings.sys[id].sensor!=null) ? settings.sys[id].sensor : SYS_CFG[id].sensorText; }
-function sensorenVon(id, o){
+function sensorListe(id,t){ const l=splitListe(sysRec(id,t).sensoren); return l.length ? l : (SYS_CFG[id].sensoren||[]); }
+function sensorDefault(id,t){ const r=sysRec(id,t); return (r.sensor!=null) ? r.sensor : SYS_CFG[id].sensorText; }
+function sensorenVon(id, o, t){
   const cfg=SYS_CFG[id];
-  if(cfg.sensorText){ const s=String(val(o,'sys_'+id+'_sensor',sensorDefault(id))).trim(); return s?[s]:[]; }
-  const liste=sensorListe(id), gew=splitListe(val(o,'sys_'+id+'_sensoren',liste.join(', ')));
+  if(cfg.sensorText){ const s=String(val(o,'sys_'+id+'_sensor',sensorDefault(id,t))).trim(); return s?[s]:[]; }
+  const liste=sensorListe(id,t), gew=splitListe(val(o,'sys_'+id+'_sensoren',liste.join(', ')));
   return liste.filter(n=>gew.includes(n)).concat(gew.filter(n=>!liste.includes(n)));
 }
 // Sensorlage: Zahl in Metern oder als Vielfaches der Länge l
@@ -600,7 +665,7 @@ function posWert(obj, k){ if(!obj) return ''; if(/^sys_.+_ort(_|$)/.test(k) && !
 const ortKey = (id, nr) => id==='phyphox' ? 'sys_phyphox_ort' : 'sys_'+id+'_ort_'+nr;
 function systemSeiten(x, o){
   const cfg=SYS_CFG[x.id];
-  const dauer={k:'sys_'+x.id+'_dauer', label:'Messdauer', type:'text', def:cfg.dauer.def, chips:cfg.dauer.chips};
+  const dauer={k:'sys_'+x.id+'_dauer', label:'Messdauer', type:'text', parse:'dauer', def:cfg.dauer.def, chips:cfg.dauer.chips};
   const sensorFeld = cfg.sensorText
     ? {k:'sys_'+x.id+'_sensor', label:'Sensor', type:'text', def:sensorDefault(x.id), recent:true}
     : {k:'sys_'+x.id+'_sensoren', type:'text', toggle:true, chipsOnly:true, stack:true, def:sensorListe(x.id).join(', '),
@@ -625,7 +690,7 @@ function sensorFelder(t, o, d){
   for(const x of sys){
     const du=String(val(o,'sys_'+x.id+'_dauer',SYS_CFG[x.id].dauer.def)||'').trim();
     if(du) dauer.push(mehr ? x.name+': '+du : du);
-    for(const nr of sensorenVon(x.id,o)){
+    for(const nr of sensorenVon(x.id,o,t)){
       const ort=String(posWert(o, ortKey(x.id,nr))).trim();
       const s = SYS_CFG[x.id].sensorText ? nr : 'Sensor '+nr;
       const datei = x.id==='arduino' && d && !d.ard_keine ? padNr(d['ard_datei_'+nr],4) : '';
@@ -637,16 +702,39 @@ function sensorFelder(t, o, d){
 // Einzelne Messung an einem Messobjekt (Nummer und Uhrzeit werden automatisch gesetzt)
 // Messung: Seiten je nach Art der Anregung des Messobjekts, danach Notizen
 // Anregungsrichtung (Impulshammer, Shaker): X = Laufkoordinate bei linearem Bauteil, Z = Wirkungslinie der Erdbeschleunigung 𝑔
+// Feste Einheit: im Feld nur die Zahl eingeben, die Einheit wird angehängt (nicht bei Text mit Buchstaben)
+// Freitext → Zahlenwert und Einheit automatisch trennen (Läutefrequenz: Hz / 1/min, Windgeschwindigkeit: m/s / km/h)
+const PARSE_REGELN = {
+  frq:  { hinweis:'Hz oder 1/min', regeln:[['Hz',/^(hz|hertz|1\/s|s\^?-1|\/s)$/],['1/min',/^(1\/min|\/min|min\^?-1|u\/min|upm|rpm|1\/m|\/m|prom(in)?(ute)?|schläge\/min|schl\/min|bpm)$/]] },
+  dauer:{ hinweis:'s, min oder h', regeln:[['s',/^(s|sek|sec|sekunde(n)?|second(s)?)$/],['min',/^(m|min|minute(n)?)$/],['h',/^(h|std|stunde(n)?|hr|hour(s)?)$/]] },
+  wind: { hinweis:'m/s oder km/h', regeln:[['m/s',/^(m\/s|m\/sek|m\/sec|ms-1|m\*s-1|mps|meterprosekunde|mpros(ek)?)$/],['km/h',/^(km\/h|kmh|km\/std|kph|kilometerprostunde|kmproh|kmprostunde)$/]] }
+};
+const parseArt = k => /^glocke_\d+_frq$/.test(k||'') ? 'frq' : k==='windgeschwindigkeit' ? 'wind' : /^sys_.+_dauer$/.test(k||'') ? 'dauer' : '';
+function wertParse(t, art){
+  t=String(t||'').trim(); const m=/^([-+]?\d+(?:[.,]\d+)?)\s*(.*)$/.exec(t);
+  if(!m) return {ok:false,z:'',e:'',erkannt:false};
+  const roh=m[2].trim(), u=roh.toLowerCase().replace(/\s+/g,''); let e='', erkannt=false;
+  if(u){ const tr=PARSE_REGELN[art].regeln.find(([,re])=>re.test(u)); if(tr){ e=tr[0]; erkannt=true; } else e=roh; }
+  return {ok:true, z:m[1].replace('.',','), e, erkannt};
+}
+function wertInfo(t, art){
+  if(!t||!String(t).trim()) return ''; const p=wertParse(t,art), h=PARSE_REGELN[art].hinweis;
+  if(!p.ok) return /\d/.test(t) ? 'Keine Zahl am Anfang erkannt' : '';
+  if(!p.e) return 'Zahlenwert '+p.z+' · Einheit fehlt ('+h+')';
+  if(!p.erkannt) return 'Zahlenwert '+p.z+' · Einheit „'+p.e+'“ nicht erkannt ('+h+')';
+  return 'Zahlenwert '+p.z+' · Einheit '+p.e;
+}
+const mitEinheit = (v, u) => { v=String(v==null?'':v).trim(); return v && u && /^[\d.,\s\/–\-]+$/.test(v) ? v+' '+u : v; };
 const richtungChips = () => ['X-Richtung'+(istLinear(objekt&&objekt.data)?' (Richtung der Laufkoordinate)':''), 'Y-Richtung', 'Z-Richtung (Wirkungslinie von 𝑔)'];
 const ERREGUNG_SEITEN = {
   'Personen': {sec:'Anregung', q:'Anregung', fields:[
     {k:'personen', label:'Personenanzahl', type:'text', mode:'numeric', chips:['1','2','3','4','5']},
-    {k:'gewicht', label:'Gewicht', type:'text', ph:'z. B. 80 kg / 75 kg'},
+    {k:'gewicht', label:'Gewicht', type:'text', unit:'kg', ph:'Gewicht [kg]'},
     {k:'p_art', label:'Bewegung', type:'text', toggle:true, ph:'oder frei eingeben', chips:['Gehen','Laufen','Springen','Fersenfall','Wippen']}]},
   'Ambient Vibration': {sec:'Anregung', q:'Ambient Vibration', fields:[
     {k:'amb_quellen', label:'Erkennbare Quellen', type:'text', toggle:true, ph:'weitere Quellen', chips:['Wind','Verkehr','Fußgänger','Maschinen','Bauarbeiten']}]},
   'Impulshammer': {sec:'Anregung', q:'Anregung', fields:[
-    {k:'hammer_typ', label:'Impulshammer', type:'text', ph:'z. B. 0,32 kg', chips:['klein','mittel','groß'], recent:true},
+    {k:'hammer_typ', label:'Impulshammer', type:'text', unit:'g', unitText:true, ph:'Hammermasse [g]', chips:['klein','mittel','groß'], recent:true},
     {k:'hammer_ort', label:'Anschlagpunkt', type:'pos', quick:['0,25','0,33','0,50'], linAbh:true},
     {k:'hammer_spitze', label:'Hammerspitze', type:'text', chips:['Gummi','Kunststoff','Stahl']},
     {k:'hammer_richtung', label:'Anregungsrichtung', type:'text', chipsOnly:true, stack:true, get chips(){ return richtungChips(); }}]},
@@ -654,7 +742,7 @@ const ERREGUNG_SEITEN = {
     {k:'glocken', label:'Glocken', type:'text', toggle:true, chipsOnly:true, stack:true, hint:'Mehrfachauswahl möglich', chips:['1','2','3','4','5','6','7'], chipLabel:c=>glockeName(cur&&cur.data,c)}]},
   'Shaker': {sec:'Anregung', q:'Anregung', fields:[
     {k:'shaker_signal', label:'Signal', type:'text', ph:'oder frei eingeben', chips:['Sinus','Sweep','Rauschen']},
-    {k:'shaker_frequenz', label:'Frequenz / Bereich', type:'text', ph:'z. B. 2–20 Hz'},
+    {k:'shaker_frequenz', label:'Frequenz / Bereich', type:'text', unit:'Hz', ph:'Frequenz [Hz]'},
     {k:'shaker_kraft', label:'Kraft / Amplitude', type:'text', ph:'z. B. 200 N'},
     {k:'shaker_ort', label:'Position', type:'pos', quick:['0,25','0,33','0,50'], linAbh:true},
     {k:'shaker_richtung', label:'Anregungsrichtung', type:'text', chipsOnly:true, stack:true, get chips(){ return richtungChips(); }}]},
@@ -676,7 +764,7 @@ function vorigeMessung(){
 }
 function arduinoSeite(){
   if(!termin || !objekt || !systemeVon(termin.data).some(x=>x.id==='arduino')) return [];
-  const sens=sensorenVon('arduino', objekt.data); if(!sens.length) return [];
+  const sens=sensorenVon('arduino', objekt.data, termin.data); if(!sens.length) return [];
   return [{sec:'Arduino', q:'Datei\u00ADbezeichnungen', sys:'arduino', dateiListe:true, fields:sens.map(nr=>
     ({k:'ard_datei_'+nr, label:'Sensor '+nr, nr, type:'text', mode:'numeric', ph:'0000', pad:4, dupCheck:true, spiegel:'ard_datei'}))}];
 }
@@ -690,7 +778,7 @@ function ersteSeite(){
   const notiz = {k:'mess_notizen', label:'Systembeschreibung', type:'textarea', ph:'oder frei eingeben', toggle:true, chips:['Grundstab II','Grundstab III','Grundstab IV']};
   // Systembeschreibung (Grundstab …) nur bei linearem Bauteil; Zugkraft wie bisher bei Zugkraftermittlung
   const linear = istLinear(objekt&&objekt.data);
-  const felder = (zug ? [{k:'zugkraft', label:'Zugkraft in kN', type:'text', mode:'decimal', ph:'z. B. 12,5'}] : []).concat(linear ? [notiz] : []);
+  const felder = (zug ? [{k:'zugkraft', label:'Zugkraft', type:'text', mode:'decimal', unit:'kN', ph:'Zugkraft [kN]'}] : []).concat(linear ? [notiz] : []);
   return felder.length ? {sec:'Messung', q: 'System', fields: felder} : null;
 }
 // Glocken: nach der Anzahl folgt je Glocke eine eigene Seite (Masse, Läutefrequenz)
@@ -704,8 +792,8 @@ const glockenListe = d => {
 function glockenSeiten(d){
   const out=[]; for(const n of glockenListe(d)) out.push({sec:'Anregung', sub:'Glocken', q:glockeName(d,n), fields:[
     {k:'glocke_'+n+'_name', label:'Name (optional)', dlabel:'Glocke '+n+': Name', type:'text', ph:'z. B. Nepomuk'},
-    {k:'glocke_'+n+'_masse', label:'Masse', dlabel:'Glocke '+n+': Masse', type:'text', ph:'z. B. 1200 kg'},
-    {k:'glocke_'+n+'_frq', label:'Läutefrequenz', dlabel:'Glocke '+n+': Läutefrequenz', type:'text', ph:'z. B. 0,75 Hz'},
+    {k:'glocke_'+n+'_masse', label:'Masse', dlabel:'Glocke '+n+': Masse', type:'text', unit:'kg', ph:'Masse [kg]'},
+    {k:'glocke_'+n+'_frq', label:'Läutefrequenz', dlabel:'Glocke '+n+': Läutefrequenz', type:'text', parse:'frq', ph:'z. B. 0,75 Hz oder 45 1/min'},
     {k:'glocke_'+n+'_richtung', label:'Läuterichtung', dlabel:'Glocke '+n+': Läuterichtung', type:'text', ph:'oder frei eingeben', chips:['Nord–Süd','Ost–West']}]});
   return out;
 }
@@ -837,6 +925,7 @@ async function refresh(){
   objekte = await getAll('objekte');
   messungen = await getAll('messungen');
   await migrate();
+  for(const t of termine){ if(geraeteSync(t)) await put('termine',t); }
   termine.sort((a,b)=> (b.data.datum||'').localeCompare(a.data.datum||'') || (b.created||0)-(a.created||0));
   objekte.sort((a,b)=> (a.created||0)-(b.created||0));
   messungen.sort((a,b)=> (parseInt(a.data.nummer,10)||0)-(parseInt(b.data.nummer,10)||0) || (a.created||0)-(b.created||0));
@@ -873,7 +962,7 @@ function nextNumber(tid){
 }
 const missing = (d, req) => req.filter(k=>!String(d[k]||'').trim());
 function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(saveCur,300); }
-async function saveCur(){ clearTimeout(saveTimer); if(!cur) return; cur.updated=Date.now(); await put(storeOf(kind),cur); }
+async function saveCur(){ clearTimeout(saveTimer); if(!cur) return; cur.updated=Date.now(); if(kind==='termin') geraeteSync(cur); await put(storeOf(kind),cur); }
 async function leave(){ await saveCur(); cur=null; }
 async function deleteObjekt(o){ for(const m of messungenOfO(o.id)) await deleteMessung(m); await deleteObjektBilder(o); await del('objekte',o.id); }
 async function deleteTermin(t){ for(const o of objekteOf(t.id)) await deleteObjekt(o); for(const m of messungenOfT(t.id)) await deleteMessung(m); await del('termine',t.id); }
@@ -887,7 +976,9 @@ async function sensorenUmbenennen(id, map){
   const neu = n => map[n] || n;
   const o = cur.data;
   const sel = splitListe(val(o,'sys_'+id+'_sensoren', sensorListe(id).join(', ')));
-  settings.sys[id].sensoren = sensorListe(id).map(neu).join(', '); saveSettings(settings);
+  const rec = sysRec(id);
+  if(termin && termin.data.geraete && termin.data.geraete[id]){ rec.sensoren = sensorListe(id).map(neu).join(', '); await put('termine', termin); }
+  else { settings.sys[id].sensoren = sensorListe(id).map(neu).join(', '); saveSettings(settings); }
   o['sys_'+id+'_sensoren'] = sel.map(neu).join(', ');
   const verschiebe = (obj, alt, ziel) => { if(obj[alt]!==undefined){ obj[ziel]=obj[alt]; delete obj[alt]; } };
   for(const alt in map){ const n=map[alt]; if(!n || n===alt) continue;
@@ -918,7 +1009,7 @@ function pflichtFehlendKeys(t, o, d){
   if(leer(o.zweck)) add('zweck','Zweck');
   if(leer(o.erregung)) add('erregung','Art der Anregung');
   for(const x of sys){
-    const sens=sensorenVon(x.id,o);
+    const sens=sensorenVon(x.id,o,t);
     if(!sens.length){ add('sys:'+x.id+':sens', x.name+': Sensor'); continue; }
     if(sens.some(nr=>leer(posWert(o,ortKey(x.id,nr))))) add('sys:'+x.id+':ort', x.name+': Sensorstandort');
   }
@@ -928,15 +1019,18 @@ function pflichtFehlendKeys(t, o, d){
     if(leer(d.hammer_typ)) add('hammer_typ','Impulshammer');
     if(leer(anschlagWert(o,d))) add('hammer_ort','Anschlagpunkt');
     if(leer(d.hammer_spitze)) add('hammer_spitze','Hammerspitze');
+    if(leer(d.hammer_richtung)) add('hammer_richtung','Anregungsrichtung');
   }
+  if(erregungenVon(o).includes('Shaker') && leer(d.shaker_richtung)) add('shaker_richtung','Shaker: Anregungsrichtung');
   if(erregungenVon(o).includes('Glocken')){
     if(!glockenListe(d).length) add('glocken','Glocken');
     for(const n of glockenListe(d)){
       if(leer(d['glocke_'+n+'_masse'])) add('glocke_'+n+'_masse','Glocke '+n+': Masse');
       if(leer(d['glocke_'+n+'_frq'])) add('glocke_'+n+'_frq','Glocke '+n+': Läutefrequenz');
+      if(leer(d['glocke_'+n+'_richtung'])) add('glocke_'+n+'_richtung','Glocke '+n+': Läuterichtung');
     }
   }
-  if(sys.some(x=>x.id==='arduino') && !d.ard_keine) sensorenVon('arduino',o).forEach(nr=>{ if(leer(d['ard_datei_'+nr])) add('ard_datei_'+nr,'Arduino-Datei '+nr); });
+  if(sys.some(x=>x.id==='arduino') && !d.ard_keine) sensorenVon('arduino',o,t).forEach(nr=>{ if(leer(d['ard_datei_'+nr])) add('ard_datei_'+nr,'Arduino-Datei '+nr); });
   return f;
 }
 function pflichtFehlend(t, o, d){ return pflichtFehlendKeys(t,o,d).map(x=>x.l); }
@@ -952,11 +1046,28 @@ async function textZuBlob(u){
   return new Blob([arr],{type:typ});
 }
 async function bilderSichern(mid){ const out=[]; for(const b of await imgsOf(mid)) out.push({w:b.w, h:b.h, caption:b.caption||'', order:b.order, data:await blobZuText(b.blob)}); return out; }
+// Auswahl-Fenster mit Schalter (Export: eigene Messsysteme mitsichern / Import: übernehmen)
+function systemWahl(titel, text, namen, okLabel, nein){
+  return new Promise(res=>{
+    const li=namen.map(n=>`<li>${esc(n)}</li>`).join('');
+    sheet(`<h3>${esc(titel)}</h3><p class="small" style="margin:0 0 6px">${esc(text)}</p><ul class="small" style="margin:0 0 10px; padding-left:20px">${li}</ul>
+      <button class="btn primary" data-x="ja">${esc(okLabel)}</button>
+      <button class="btn" data-x="nein">${esc(nein)}</button>
+      <button class="btn" data-x="close">Abbrechen</button>`, (x,close)=>{ close(); res(x==='ja'?true:x==='nein'?false:null); });
+  });
+}
 async function sicherungExport(liste){
   await refresh();
+  const eigene=(settings.custom||[]).filter(c=>settings.sys[c.id]);
+  let mitSys=false;
+  if(eigene.length){
+    const w=await systemWahl('Eigene Messsysteme','Du hast selbst erstellte Messsysteme. Sollen sie (mit ihren Einstellungen) in der Sicherung enthalten sein?', eigene.map(c=>c.name), 'Mit Messsystemen sichern', 'Ohne Messsysteme sichern');
+    if(w===null) return; mitSys=w;
+  }
   const s=sheet(`<h3>Sicherung wird erstellt …</h3>`,()=>{});
   try{
     const paket={app:'messbericht', format:1, erstellt:new Date().toISOString(), termine:[]};
+    if(mitSys) paket.messsysteme=eigene.map(c=>({id:c.id, name:c.name, daten:JSON.parse(JSON.stringify(settings.sys[c.id]))}));
     for(const t of liste){
       const te={termin:t, objekte:[]};
       for(const o of objekteOf(t.id)){
@@ -982,8 +1093,19 @@ async function sicherungImport(datei){
   if(!paket || paket.app!=='messbericht' || !Array.isArray(paket.termine)) return alert('Die Datei ist keine Sicherung der Messbericht-App.');
   const n=paket.termine.length;
   if(!confirm(n+' Messtermin'+(n===1?'':'e')+' importieren? Vorhandene Messtermine bleiben unverändert, die importierten kommen als neue Einträge dazu.')) return;
+  // Eigene Messsysteme aus der Sicherung (nur solche, die es hier noch nicht gibt)
+  const neueSys=(Array.isArray(paket.messsysteme)?paket.messsysteme:[]).filter(m=>m && m.id && m.name && !SYSTEME.some(x=>x.name.toLowerCase()===String(m.name).toLowerCase() || x.id===m.id));
+  let sysUebernehmen=false;
+  if(neueSys.length){
+    const w=await systemWahl('Eigene Messsysteme','Die Sicherung enthält Messsysteme, die es hier noch nicht gibt. In die Einstellungen übernehmen?', neueSys.map(m=>m.name), 'Übernehmen', 'Nicht übernehmen');
+    if(w===null) return; sysUebernehmen=w;
+  }
   const s=sheet(`<h3>Import läuft …</h3>`,()=>{});
   try{
+    if(sysUebernehmen){
+      neueSys.forEach(m=>{ settings.custom=(settings.custom||[]).concat([{id:m.id,name:m.name}]); settings.sys[m.id]=Object.assign({geraetetyp:m.name,aafilter:'',abtastrate:'',sensoren:'1, 2, 3'}, m.daten||{}); });
+      syncSysteme(); saveSettings(settings);
+    }
     const bilderRein = async (liste, mid)=>{ for(const b of liste||[]) await put('bilder',{id:uid(), mid, blob:await textZuBlob(b.data), w:b.w, h:b.h, caption:b.caption||'', order:b.order||Date.now()}); };
     for(const te of paket.termine){
       const tid=uid();
@@ -1260,7 +1382,7 @@ function messungDetailHTML(m){
     else if((s.sub||'')!==lastSub){ h+=`<div class="gruppe-linie fein"></div>`; lastSub=s.sub||''; }
     const v=f.linAbh ? anschlagWert(objekt.data,d,f.k) : f.type==='pos' ? posWert(d,f.k) : (f.pad ? padNr(d[f.k],4) : (d[f.k]||''));
     if(f.spiegel && d.ard_keine){ if(f.k===s.fields[0].k) h += `<button class="rv" data-go="${i}" data-mid="${m.id}"><span class="k">Arduino</span><span class="v">keine Messung erfolgt</span></button>`; return; }
-    const anzeige = f.spiegel && v ? f.nr+'-'+v : f.k==='zugkraft' ? zugkraftText(v) : v;
+    const anzeige = f.spiegel && v ? f.nr+'-'+v : f.k==='zugkraft' ? zugkraftText(v) : f.unit ? mitEinheit(v,f.unit) : v;
     h += `<button class="rv ${fm.has(f.k)?'fehlt':''}" data-kat="${katVon(s)}" ${s.sub?`data-sub="${esc(s.sub)}"`:''} data-go="${i}" data-mid="${m.id}"><span class="k">${esc(f.spiegel ? 'Arduino '+f.nr : f.k==='zugkraft' ? 'Zugkraft' : (f.dlabel||f.label||s.q))}</span><span class="v">${anzeige?esc(anzeige):(fm.has(f.k)?'fehlt':'–')}</span></button>`;
   }); });
   return h;
@@ -1584,7 +1706,8 @@ function fieldHTML(f, single){
     /* nur Auswahl per Antippen */
   } else {
     const t = f.type==='date'?'date':f.type==='time'?'time':'text';
-    h += `<input class="inp" id="${id}" type="${t}" data-k="${f.k}" value="${esc(v)}" placeholder="${esc(f.ph||'')}" ${f.mode?`inputmode="${f.mode}"`:''} ${f.pad?`data-pad="${f.pad}"`:''} enterkeyhint="next" autocomplete="off">`;
+    if(f.unit) h += `<div class="unitwrap${/\d/.test(v)&&!/[A-Za-zÄÖÜäöüß]/.test(v)?' ue':''}"><span class="unit" aria-hidden="true"><span class="uv">${esc(v)}</span> ${esc(f.unit)}</span><input class="inp uinp" id="${id}" type="text" data-k="${f.k}" value="${esc(v)}" placeholder="${esc(f.ph||'')}" ${f.unitText?'':'data-num="1" inputmode="decimal"'} enterkeyhint="next" autocomplete="off"></div>`;
+    else h += `<input class="inp" id="${id}" type="${t}" data-k="${f.k}" value="${esc(v)}" placeholder="${esc(f.ph||'')}" ${f.mode?`inputmode="${f.mode}"`:''} ${f.pad?`data-pad="${f.pad}"`:''} enterkeyhint="next" autocomplete="off">`;
   }
   if(f.rename){
     const parts = String(v).split(',').map(s=>s.trim());
@@ -1593,6 +1716,7 @@ function fieldHTML(f, single){
     const parts = String(v).split(',').map(s=>s.trim());
     h += `<div class="chips ${f.stack?'stack':''} ${f.stack&&!f.icons?'noic':''}">${f.chips.map(c=>`<button class="chip ${(f.toggle?parts.includes(c):v===c)?'on':''} ${!f.stack && String(c).length===1?'rund':''}" data-${f.toggle?'tog':'set'}="${f.k}" data-val="${esc(c)}">${f.icons&&f.icons[c]?`<span class="chip-ic">${SYS_ICONS[f.icons[c]]}</span>`:''}<span>${esc(f.chipLabel?f.chipLabel(c):c)}</span></button>`).join('')}</div>`;
   }
+  if(f.parse) h += `<p class="muted small" data-frqinfo="${f.k}" style="margin:8px 0 0">${esc(wertInfo(v,f.parse))}</p>`;
   if(f.hint) h += `<p class="muted small" style="margin:10px 0 0">${esc(f.hint)}</p>`;
   if(istUebernommen(f.k)) h += `<p class="muted small" data-carry="${f.k}" style="margin:8px 0 0">↺ aus vorheriger Messung</p>`;
   if(f.fname) h += `<p class="muted small" data-fname="${f.k}" data-nr="${esc(f.fname)}" style="margin:8px 0 0">${v?'Dateiname: '+esc(f.fname)+'-'+esc(padNr(v,4)):''}</p>`;
@@ -1630,7 +1754,7 @@ async function showStep(){
   }
   const last = step===STEPS.length-1;
   const title = kind==='termin' ? 'Messtermin' : kind==='objekt' ? objektTitel(termin&&termin.data, cur.data) : messungTitel(termin&&termin.data, objekt&&objekt.data, cur.data);
-  const wm = s.sys ? `<div class="wm" aria-hidden="true">${SYS_ICONS[{ni:'daq',arduino:'chip',phyphox:'phone'}[s.sys]]}</div>` : '';
+  const wm = s.sys ? `<div class="wm" aria-hidden="true">${SYS_ICONS[{ni:'daq',arduino:'chip',phyphox:'phone'}[s.sys]||'daq']}</div>` : '';
   $('#app').innerHTML = `<div class="wrap">
     <div class="bar"><button class="icon-btn back-btn" id="upBtn" aria-label="Zurück zu ${({termin:'Terminen', objekt:'Termin', messung:'Objekt'})[kind]}">${backIcon()}</button><h2>${esc(title)}</h2><button class="icon-btn more-btn" id="revBtn" aria-label="Menü">${moreIcon()}</button></div>
     ${tape}
@@ -1852,23 +1976,37 @@ function sheet(inner, onAction){
   return {el:bg, close};
 }
 /* ---------- Einstellungen ---------- */
+// Abtastrate: Eingabe z. B. „200Hz“ → „200 Hz (1/0,005s)“; auch Zeitabstand („1/0,005 s“, „5 ms“) und kHz werden erkannt
+const zahlDE = n => String(parseFloat(Number(n).toPrecision(6))).replace('.',',');
+function abtastNorm(t){
+  t=String(t||'').trim(); if(!t) return null;
+  t=t.replace(/\(.*$/,'').trim();                       // alter Zusatz in Klammern wird neu berechnet
+  const z=x=>parseFloat(String(x).replace(',','.')); let m, hz=null;
+  if((m=/^1\s*\/\s*([\d.,]+)\s*(s|sek)?$/i.exec(t))) hz=1/z(m[1]);
+  else if((m=/^([\d.,]+)\s*ms$/i.exec(t))) hz=1000/z(m[1]);
+  else if((m=/^([\d.,]+)\s*(khz|ks\/s|ksps)$/i.exec(t))) hz=z(m[1])*1000;
+  else if((m=/^([\d.,]+)\s*(hz|hertz|s\/s|sps|1\/s)$/i.exec(t))) hz=z(m[1]);
+  else if((m=/^([\d.,]+)\s*(s|sek)$/i.exec(t))) hz=1/z(m[1]);
+  if(hz==null || !isFinite(hz) || hz<=0) return {fehler:/\d/.test(t) ? 'Einheit fehlt oder nicht erkannt (z. B. 200 Hz)' : ''};
+  return {hz, text: zahlDE(hz)+' Hz (1/'+zahlDE(1/hz)+'s)', info:'Abtastrate '+zahlDE(hz)+' Hz; Δt = '+zahlDE(1/hz)+' s'};
+}
 function showSettings(){
   const inp=(id,val,area)=> area?`<textarea class="inp" id="${id}">${esc(val)}</textarea>`:`<input class="inp" id="${id}" value="${esc(val)}">`;
-  $('#app').innerHTML=`<div class="wrap review">
+  $('#app').innerHTML=`<div class="wrap review einst">
     <div class="bar"><button class="icon-btn back-btn" id="homeBtn" aria-label="Zurück zu Terminen">${backIcon()}</button><h2>Einstellungen</h2><span style="min-width:44px"></span></div>
-    <p class="muted small">Firma und Messleiter werden bei jedem neuen Messtermin vorausgefüllt. Die Gerätedaten der Messsysteme landen im Bericht unter „Messgeräte“, je nachdem, welche Systeme beim Termin ausgewählt sind.</p>
-    <h3>Institution</h3>
+    <h3 class="set-h">Institution</h3>
     <div class="field"><label for="s_firma">Firma</label>${inp('s_firma',settings.firma)}</div>
     <div class="field"><label for="s_messleiter">Messleiter</label>${inp('s_messleiter',settings.messleiter)}</div>
-    <h3>Messsysteme</h3>
-    ${SYSTEME.map(x=>`<details class="sek" style="margin-bottom:4px"><summary><span class="st">${esc(x.name)}</span><svg class="chev" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+    <h3 class="set-h set-hplus"><span>Messsysteme</span><button class="plus-btn" id="addSysBtn" aria-label="Neues Messsystem anlegen"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button></h3>
+    ${SYSTEME.map(x=>`<details class="sek" data-sysid="${x.id}" style="margin-bottom:4px"><summary><span class="st">${esc(x.name)}</span><svg class="chev" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
       <div class="field"><label for="s_${x.id}_g">Gerätetyp</label>${inp('s_'+x.id+'_g',settings.sys[x.id].geraetetyp,true)}</div>
-      <div class="field"><label for="s_${x.id}_a">Anti-Aliasing-Filter</label>${inp('s_'+x.id+'_a',settings.sys[x.id].aafilter)}</div>
-      <div class="field"><label for="s_${x.id}_r">Abtastrate</label>${inp('s_'+x.id+'_r',settings.sys[x.id].abtastrate)}</div>
+      <div class="field"><label for="s_${x.id}_a">Anti-Aliasing-Filter</label>${(()=>{ const v=String(settings.sys[x.id].aafilter||''); return `<div class="unitwrap${/\d/.test(v)&&!/[A-Za-zÄÖÜäöüß]/.test(v)?' ue':''}"><span class="unit" aria-hidden="true"><span class="uv">${esc(v)}</span> Hz</span><input class="inp uinp" id="s_${x.id}_a" type="text" data-num="1" inputmode="decimal" value="${esc(v)}" placeholder="Grenzfrequenz [Hz]" autocomplete="off"></div>`; })()}</div>
+      <div class="field"><label for="s_${x.id}_r">AD-Wandlung</label>${inp('s_'+x.id+'_r',settings.sys[x.id].abtastrate)}<p class="muted small" id="s_${x.id}_rinfo" style="margin:8px 0 0"></p></div>
       ${SYS_CFG[x.id].sensorText
         ? `<div class="field"><label for="s_${x.id}_s">Sensor (Voreinstellung)</label>${inp('s_'+x.id+'_s',sensorDefault(x.id))}</div>`
-        : `<div class="field"><label for="s_${x.id}_s">Sensornummern, durch Komma getrennt</label>${inp('s_'+x.id+'_s',sensorListe(x.id).join(', '))}</div>`}</details>`).join('')}
-    <button class="btn" id="resetBtn">Auf Vorlage zurücksetzen</button>
+        : `<div class="field"><label for="s_${x.id}_s">Sensornummern</label>${inp('s_'+x.id+'_s',sensorListe(x.id).join(', '))}</div>`}
+      ${x.custom?'':`<button class="btn" id="reset_${x.id}" data-resetsys="${x.id}">Auf Vorlage zurücksetzen</button>`}
+      ${x.custom?`<button class="del-link" data-delsys="${x.id}">${trashIcon()}<span>Messsystem löschen</span></button>`:''}</details>`).join('')}
     <p class="muted small" style="margin-top:28px">Alle Messungen und Bilder liegen nur auf diesem Gerät. Fertige Berichte regelmäßig in der Dateien-App sichern.</p>
     <p class="muted small" id="verInfo" style="margin-top:12px">Version: …</p>
   </div>`;
@@ -1881,7 +2019,56 @@ function showSettings(){
   const bind=(id,fn)=>{ $('#'+id).oninput=e=>{ fn(e.target.value); saveSettings(settings); }; };
   bind('s_firma',v=>settings.firma=v); bind('s_messleiter',v=>settings.messleiter=v);
   SYSTEME.forEach(x=>{ bind('s_'+x.id+'_g',v=>settings.sys[x.id].geraetetyp=v); bind('s_'+x.id+'_a',v=>settings.sys[x.id].aafilter=v); bind('s_'+x.id+'_r',v=>settings.sys[x.id].abtastrate=v); bind('s_'+x.id+'_s',v=>{ if(SYS_CFG[x.id].sensorText) settings.sys[x.id].sensor=v; else settings.sys[x.id].sensoren=v; }); });
-  $('#resetBtn').onclick=()=>{ if(confirm('Einstellungen auf die Vorlage zurücksetzen?')){ settings=freshSettings(); saveSettings(settings); showSettings(); } };
+  SYSTEME.forEach(x=>{ const el=$('#s_'+x.id+'_r'), info=$('#s_'+x.id+'_rinfo'); if(!el) return; el.placeholder='Abtastrate [Hz]';
+    const zeig=()=>{ const n=abtastNorm(el.value); info.textContent = n ? (n.info||n.fehler||'') : ''; };
+    el.addEventListener('input',zeig);
+    el.addEventListener('change',()=>{ const n=abtastNorm(el.value); if(n && n.text){ el.value=n.text; settings.sys[x.id].abtastrate=n.text; saveSettings(settings); } zeig(); });
+    zeig(); });
+  $('#addSysBtn').onclick=()=>{
+    sheet(`<input class="inp" id="sysName" type="text" autocomplete="off" placeholder="Name des Messsystems">
+      <p class="small" id="sysHint" style="margin:0; color:var(--danger)"></p>
+      <button class="btn primary" data-x="ok">Anlegen</button>
+      <button class="btn" data-x="close">Abbrechen</button>`, (x,close)=>{
+        if(x==='close') return close();
+        const name=$('#sysName').value.trim().replace(/\s+/g,' '), hint=$('#sysHint');
+        if(!name){ hint.textContent='Bitte einen Namen eingeben.'; return; }
+        if(name.includes(',')){ hint.textContent='Der Name darf kein Komma enthalten.'; return; }
+        if(SYSTEME.some(y=>y.name.toLowerCase()===name.toLowerCase())){ hint.textContent='Ein Messsystem mit diesem Namen gibt es schon.'; return; }
+        const id='c'+Date.now().toString(36);
+        settings.custom=(settings.custom||[]).concat([{id,name}]); syncSysteme(); saveSettings(settings); close(); showSettings();
+        setTimeout(()=>{ const d=document.querySelector(`[data-delsys="${id}"]`); const det=d&&d.closest('details'); if(det){ det.open=true; det.scrollIntoView({block:'center'}); } },50);
+      });
+    setTimeout(()=>{ const i=$('#sysName'); if(i && !('ontouchstart' in window)) i.focus(); },50);
+  };
+  document.querySelectorAll('[data-delsys]').forEach(b=>b.onclick=async()=>{
+    const id=b.dataset.delsys, sys=SYSTEME.find(y=>y.id===id); if(!sys) return;
+    // Prüfen, ob das Messsystem bei Messterminen verwendet wird
+    let ts=[]; try{ ts=(await getAll('termine')).filter(t=>String((t.data&&t.data.systeme)||'').split(',').map(x=>x.trim()).includes(sys.name)); }catch(e){}
+    const nenn=t=>esc([(t.data&&t.data.name)||'ohne Namen', fmtDate(t.data&&t.data.datum)].filter(Boolean).join(', '));
+    const loeschen=()=>{ settings.custom=(settings.custom||[]).filter(c=>c.id!==id); delete settings.sys[id]; delete SYS_CFG[id]; syncSysteme(); saveSettings(settings); showSettings(); };
+    if(ts.length){
+      sheet(`<p class="small" style="margin:0 0 4px"><b>„${esc(sys.name)}“ wird verwendet</b> in ${ts.length===1?'1 Messtermin':ts.length+' Messterminen'}:<br>${ts.slice(0,8).map(nenn).join('<br>')}${ts.length>8?'<br>… und '+(ts.length-8)+' weitere':''}</p>
+        <p class="small" style="margin:0">Löschst du es trotzdem, wird es dort nicht mehr angezeigt und nicht mehr in den Bericht übernommen. Die gespeicherten Messdaten bleiben erhalten.</p>
+        <button class="btn" data-x="del" style="color:var(--danger)">Dennoch löschen</button>
+        <button class="btn" data-x="close">Abbrechen</button>`, (x,close)=>{ close(); if(x==='del') loeschen(); });
+    } else {
+      sheet(`<p class="small" style="margin:0">„${esc(sys.name)}“ wird bei keinem Messtermin verwendet.</p>
+        <button class="btn" data-x="del" style="color:var(--danger)">Löschen</button>
+        <button class="btn" data-x="close">Abbrechen</button>`, (x,close)=>{ close(); if(x==='del') loeschen(); });
+    }
+  });
+  // Zurücksetzen gilt nur für das jeweils geöffnete Messsystem
+  document.querySelectorAll('[data-resetsys]').forEach(b=>b.onclick=()=>{
+    const id=b.dataset.resetsys, sys=SYSTEME.find(y=>y.id===id); if(!sys) return;
+    sheet(`<p class="small" style="margin:0">Einstellungen von „${esc(sys.name)}“ auf die Vorlage zurücksetzen? Andere Messsysteme bleiben unverändert.</p>
+      <button class="btn primary" data-x="ok">Zurücksetzen</button>
+      <button class="btn" data-x="close">Abbrechen</button>`, (x,close)=>{
+        close(); if(x!=='ok') return;
+        settings.sys[id] = JSON.parse(JSON.stringify(SYS_DEFAULTS[id]));
+        saveSettings(settings); showSettings();
+        setTimeout(()=>{ const d=document.querySelector(`details[data-sysid="${id}"]`); if(d){ d.open=true; d.scrollIntoView({block:'start'}); } },50);
+      });
+  });
 }
 
 
@@ -1901,10 +2088,10 @@ function reportFields(m){
     firma:t.firma, messleiter:t.messleiter,
     zweck:o.zweck, messobjekt:[o.messobjekt, o.objekt_notizen, d.mess_notizen, zugkraftText(d.zugkraft)?'Zugkraft: '+zugkraftText(d.zugkraft):''].filter(x=>String(x||'').trim()).join('\n'), ...geraeteFelder(t,d),
     ...sensorFelder(t,o,d), erregung:erregungText(o,d),
-    ergaenzungen: lines([['Personenanzahl',d.personen],['Gewicht',d.gewicht],['Erkennbare Quellen',d.amb_quellen],
-      ['Impulshammer',d.hammer_typ],['Hammerspitze',d.hammer_spitze],['Anschlagrichtung',d.hammer_richtung],
-      ['Glockenanzahl',glockenListe(d).length||''],...glockenListe(d).map(n=>[glockeName(d,n), [d['glocke_'+n+'_masse'], d['glocke_'+n+'_frq'], String(d['glocke_'+n+'_richtung']||'').trim()?'Läuterichtung '+String(d['glocke_'+n+'_richtung']).trim():''].map(x=>String(x||'').trim()).filter(Boolean).join(', ')]),
-      ['Shaker-Signal',d.shaker_signal],['Shaker-Frequenz',d.shaker_frequenz],['Shaker-Kraft',d.shaker_kraft],['Shaker-Position',anschlagWert(o,d,'shaker_ort')],['Shaker-Richtung',d.shaker_richtung],
+    ergaenzungen: lines([['Personenanzahl',d.personen],['Gewicht',mitEinheit(d.gewicht,'kg')],['Erkennbare Quellen',d.amb_quellen],
+      ['Impulshammer',mitEinheit(d.hammer_typ,'g')],['Hammerspitze',d.hammer_spitze],['Anschlagrichtung',d.hammer_richtung],
+      ['Glockenanzahl',glockenListe(d).length||''],...glockenListe(d).map(n=>[glockeName(d,n), [mitEinheit(d['glocke_'+n+'_masse'],'kg'), d['glocke_'+n+'_frq'], String(d['glocke_'+n+'_richtung']||'').trim()?'Läuterichtung '+String(d['glocke_'+n+'_richtung']).trim():''].map(x=>String(x||'').trim()).filter(Boolean).join(', ')]),
+      ['Shaker-Signal',d.shaker_signal],['Shaker-Frequenz',mitEinheit(d.shaker_frequenz,'Hz')],['Shaker-Kraft',d.shaker_kraft],['Shaker-Position',anschlagWert(o,d,'shaker_ort')],['Shaker-Richtung',d.shaker_richtung],
       ['Unwuchterreger-Frequenz',d.unw_frequenz],['Unwuchtmoment',d.unw_moment],['Unwuchterreger-Position',d.unw_ort]], d.ergaenzungen_sonst),
     notizen: lines([['Spürbarkeit',d.spuerbarkeit],['Sekundäreffekte',d.sekundaer]], d.notizen_sonst) };
 }
@@ -1913,9 +2100,9 @@ function geraeteFelder(t, d){
   const gew = systemeVon(t);
   if(!gew.length) return {geraetetyp:d.geraetetyp, aafilter:d.aafilter, abtastrate:d.abtastrate}; // ältere Messungen
   const mehr = gew.length>1;
-  const liste = k => gew.map(x=>[x.name, String(settings.sys[x.id][k]||'').trim()]).filter(p=>p[1])
+  const liste = (k,u) => gew.map(x=>[x.name, mitEinheit(String(sysRec(x.id,t)[k]||'').trim(), u)]).filter(p=>p[1])
     .map(([n,v])=> mehr ? n+': '+v : v).join('\n');
-  return { geraetetyp: gew.map(x=>String(settings.sys[x.id].geraetetyp||x.name).trim()).join('\n'), aafilter: liste('aafilter'), abtastrate: liste('abtastrate') };
+  return { geraetetyp: gew.map(x=>String(sysRec(x.id,t).geraetetyp||x.name).trim()).join('\n'), aafilter: liste('aafilter','Hz'), abtastrate: liste('abtastrate') };
 }
 // Art der Anregung, bei Personen mit der gewählten Bewegung
 function erregungText(o,d){
@@ -1929,7 +2116,7 @@ function erregungText(o,d){
 function arduinoDateien(t,o,d){
   if(d.ard_keine) return [];
   if(!systemeVon(t).some(x=>x.id==='arduino')) return [];
-  return sensorenVon('arduino',o).map(nr=>{ const f=padNr(d['ard_datei_'+nr],4); return f ? nr+'-'+f : ''; }).filter(Boolean);
+  return sensorenVon('arduino',o,t).map(nr=>{ const f=padNr(d['ard_datei_'+nr],4); return f ? nr+'-'+f : ''; }).filter(Boolean);
 }
 function fileName(m){ const d=m.data, t=terminOf(m), o=objektOf(m); return (safeName(d.nummer)||'xx')+'-Messbericht'+(t.datum?'_'+t.datum:'')+(o.messobjekt?'_'+safeName(o.messobjekt):'')+'.docx'; }
 async function buildDocx(m){
