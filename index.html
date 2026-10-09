@@ -581,7 +581,7 @@ const TERMIN_STEPS = [
     {k:'windrichtung', label:'Windrichtung', type:'compass'}]},
   {sec:'Witterung', q:'Temperatur', fields:[{k:'temperatur', type:'text', mode:'decimal', unit:'°C', ph:'Temperatur [°C]'}]},
   {sec:'Institution', q:'Firma und Messleiter', fields:[{k:'firma', label:'Firma', type:'text', recent:true},{k:'messleiter', label:'Messleiter', type:'text', recent:true}]},
-  {sec:'Messgeräte', q:'Messsysteme', fields:[{k:'systeme', type:'text', toggle:true, chipsOnly:true, stack:true, hint:'Mehrfachauswahl möglich', get chips(){ const l=SYSTEME.map(x=>x.name), g=(typeof cur!=='undefined'&&cur&&cur.data&&cur.data.geraete)||{}; Object.values(g).forEach(r=>{ if(r&&r.name&&!l.includes(r.name)) l.push(r.name); }); return l; }, get icons(){ const o={'National Instruments':'daq','Arduino':'chip','Phyphox':'phone'}; SYSTEME.filter(x=>x.custom).forEach(x=>{ o[x.name]='daq'; }); const g=(typeof cur!=='undefined'&&cur&&cur.data&&cur.data.geraete)||{}; Object.values(g).forEach(r=>{ if(r&&r.name&&!o[r.name]) o[r.name]='daq'; }); return o; }}]}
+  {sec:'Messgeräte', q:'Messsysteme', fields:[{k:'systeme', type:'text', toggle:true, chipsOnly:true, stack:true, hint:'Mehrfachauswahl möglich', get chips(){ const l=SYSTEME.map(x=>x.name), g=(typeof cur!=='undefined'&&cur&&cur.data&&cur.data.geraete)||{}; Object.values(g).forEach(r=>{ if(r&&r.name&&!l.includes(r.name)) l.push(r.name); }); return l; }, get icons(){ const o={'National Instruments':'daq','Arduino':'chip','Phyphox':'phone'}; const cs=(settings.custom||[]); cs.forEach((c,k)=>{ o[c.name]='num:'+(k+1); }); let n=cs.length; const g=(typeof cur!=='undefined'&&cur&&cur.data&&cur.data.geraete)||{}; Object.values(g).forEach(r=>{ if(r&&r.name&&!o[r.name]){ n++; o[r.name]='num:'+n; } }); return o; }}]}
 ];
 // Messobjekt innerhalb eines Termins
 const OBJEKT_STEPS = [
@@ -707,9 +707,11 @@ function sensorFelder(t, o, d){
 const PARSE_REGELN = {
   frq:  { hinweis:'Hz oder 1/min', regeln:[['Hz',/^(hz|hertz|1\/s|s\^?-1|\/s)$/],['1/min',/^(1\/min|\/min|min\^?-1|u\/min|upm|rpm|1\/m|\/m|prom(in)?(ute)?|schläge\/min|schl\/min|bpm)$/]] },
   dauer:{ hinweis:'s, min oder h', regeln:[['s',/^(s|sek|sec|sekunde(n)?|second(s)?)$/],['min',/^(m|min|minute(n)?)$/],['h',/^(h|std|stunde(n)?|hr|hour(s)?)$/]] },
+  kraft:{ hinweis:'N, kN, mm, µm, mm/s, m/s² oder g', regeln:[['N',/^(n|newton)$/],['kN',/^(kn|kilonewton)$/],['mm',/^(mm|millimeter)$/],['µm',/^(µm|μm|um|mikrometer|micrometer)$/],['mm/s',/^(mm\/s|mm\/sek|mm\/sec|mms-1)$/],['m/s²',/^(m\/s²|m\/s2|m\/s\^2|ms-2|m\/sek²|m\/sek2)$/],['g',/^(g)$/]] },
+  moment:{ hinweis:'kg·m, kg·cm, kg·mm, g·cm oder g·mm', regeln:[['kg·m',/^(kg[·*.]?m|kgm)$/],['kg·cm',/^(kg[·*.]?cm)$/],['kg·mm',/^(kg[·*.]?mm)$/],['g·cm',/^(g[·*.]?cm)$/],['g·mm',/^(g[·*.]?mm)$/]] },
   wind: { hinweis:'m/s oder km/h', regeln:[['m/s',/^(m\/s|m\/sek|m\/sec|ms-1|m\*s-1|mps|meterprosekunde|mpros(ek)?)$/],['km/h',/^(km\/h|kmh|km\/std|kph|kilometerprostunde|kmproh|kmprostunde)$/]] }
 };
-const parseArt = k => /^glocke_\d+_frq$/.test(k||'') ? 'frq' : k==='windgeschwindigkeit' ? 'wind' : /^sys_.+_dauer$/.test(k||'') ? 'dauer' : '';
+const parseArt = k => /^glocke_\d+_frq$/.test(k||'') ? 'frq' : k==='windgeschwindigkeit' ? 'wind' : k==='shaker_kraft' ? 'kraft' : k==='unw_frequenz' ? 'frq' : k==='unw_moment' ? 'moment' : /^sys_.+_dauer$/.test(k||'') ? 'dauer' : '';
 function wertParse(t, art){
   t=String(t||'').trim(); const m=/^([-+]?\d+(?:[.,]\d+)?)\s*(.*)$/.exec(t);
   if(!m) return {ok:false,z:'',e:'',erkannt:false};
@@ -734,6 +736,7 @@ const ERREGUNG_SEITEN = {
   'Ambient Vibration': {sec:'Anregung', q:'Ambient Vibration', fields:[
     {k:'amb_quellen', label:'Erkennbare Quellen', type:'text', toggle:true, ph:'weitere Quellen', chips:['Wind','Verkehr','Fußgänger','Maschinen','Bauarbeiten']}]},
   'Impulshammer': {sec:'Anregung', q:'Anregung', fields:[
+    {k:'hammer_produkt', label:'Produktbezeichnung', type:'text', ph:'optional', recent:true},
     {k:'hammer_typ', label:'Impulshammer', type:'text', unit:'g', unitText:true, ph:'Hammermasse [g]', chips:['klein','mittel','groß'], recent:true},
     {k:'hammer_ort', label:'Anschlagpunkt', type:'pos', quick:['0,25','0,33','0,50'], linAbh:true},
     {k:'hammer_spitze', label:'Hammerspitze', type:'text', chips:['Gummi','Kunststoff','Stahl']},
@@ -741,14 +744,16 @@ const ERREGUNG_SEITEN = {
   'Glocken': {sec:'Anregung', q:'Anregung', fields:[
     {k:'glocken', label:'Glocken', type:'text', toggle:true, chipsOnly:true, stack:true, hint:'Mehrfachauswahl möglich', chips:['1','2','3','4','5','6','7'], chipLabel:c=>glockeName(cur&&cur.data,c)}]},
   'Shaker': {sec:'Anregung', q:'Anregung', fields:[
+    {k:'shaker_produkt', label:'Produktbezeichnung', type:'text', ph:'optional', recent:true},
     {k:'shaker_signal', label:'Signal', type:'text', ph:'oder frei eingeben', chips:['Sinus','Sweep','Rauschen']},
     {k:'shaker_frequenz', label:'Frequenz / Bereich', type:'text', unit:'Hz', ph:'Frequenz [Hz]'},
-    {k:'shaker_kraft', label:'Kraft / Amplitude', type:'text', ph:'z. B. 200 N'},
+    {k:'shaker_kraft', label:'Kraft / Amplitude', type:'text', parse:'kraft', ph:'z. B. 200 N oder 2 mm'},
     {k:'shaker_ort', label:'Position', type:'pos', quick:['0,25','0,33','0,50'], linAbh:true},
     {k:'shaker_richtung', label:'Anregungsrichtung', type:'text', chipsOnly:true, stack:true, get chips(){ return richtungChips(); }}]},
   'Unwuchterreger': {sec:'Anregung', q:'Anregung', fields:[
-    {k:'unw_frequenz', label:'Drehzahl / Frequenz', type:'text', ph:'z. B. 3 Hz'},
-    {k:'unw_moment', label:'Unwuchtmoment', type:'text', ph:'z. B. 0,5 kgm'},
+    {k:'unw_produkt', label:'Produktbezeichnung', type:'text', ph:'optional', recent:true},
+    {k:'unw_frequenz', label:'Drehzahl / Frequenz', type:'text', parse:'frq', ph:'z. B. 3 Hz oder 180 1/min'},
+    {k:'unw_moment', label:'Unwuchtmoment', type:'text', parse:'moment', ph:'z. B. 0,5 kg·m'},
     {k:'unw_ort', label:'Position', type:'text', ph:'z. B. Feldmitte'}]}
 };
 const NOTIZ_SEITE = {sec:'Notizen', q:'Beobachtung', fields:[
@@ -806,7 +811,7 @@ function messungSteps(d){
 function zugkraftText(v){ const t=normDez(v); return t ? (/^[-+]?\d+(,\d+)?$/.test(t) ? t+' kN' : t) : ''; }
 // Diese Angaben schlägt eine neue Messung aus der vorherigen Messung am selben Messobjekt vor
 // Neue Messung übernimmt nur diese Angaben aus der vorherigen Messung am selben Objekt
-const UEBERNAHME = ['zugkraft','mess_notizen','personen','gewicht','p_art','hammer_typ','hammer_ort','hammer_ort_t','hammer_spitze','shaker_signal','shaker_frequenz','shaker_kraft','shaker_ort','shaker_ort_t','hammer_richtung','shaker_richtung','shaker_ort_z','shaker_ort_e','unw_frequenz','unw_moment','unw_ort'].concat(Array.from({length:20},(_,i)=>['glocke_'+(i+1)+'_name','glocke_'+(i+1)+'_masse','glocke_'+(i+1)+'_frq','glocke_'+(i+1)+'_richtung']).flat());
+const UEBERNAHME = ['zugkraft','mess_notizen','personen','gewicht','p_art','hammer_typ','hammer_ort','hammer_ort_t','hammer_spitze','shaker_signal','shaker_frequenz','shaker_kraft','shaker_ort','shaker_ort_t','hammer_richtung','shaker_richtung','shaker_ort_z','shaker_ort_e','unw_frequenz','unw_moment','unw_ort','hammer_produkt','shaker_produkt','unw_produkt'].concat(Array.from({length:20},(_,i)=>['glocke_'+(i+1)+'_name','glocke_'+(i+1)+'_masse','glocke_'+(i+1)+'_frq','glocke_'+(i+1)+'_richtung']).flat());
 // Anschlagpunkt: bei linearem Bauteil l [m] / ξ [-], sonst Freitext
 const anschlagWert = (o, d, k) => { k=k||'hammer_ort'; return istLinear(o) ? posWert(d,k) : String((d&&d[k+'_t'])||'').trim(); };
 // Übernommene Angabe noch unverändert? Dann ersetzt die erste neue Auswahl sie komplett.
@@ -853,6 +858,10 @@ const del = (s,k) => tx(s,'readwrite',st=>st.delete(k));
 const imgsOf = async mid => (await tx('bilder','readonly',st=>st.index('mid').getAll(mid))).sort((a,b)=>a.order-b.order);
 
 /* ---------- Hilfsfunktionen ---------- */
+// Eigene Messsysteme: Appkästchen mit fortlaufender Nummer (Reihenfolge der Anlage)
+const numIcon = n => `<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><text x="13" y="18.2" text-anchor="middle" font-size="${String(n).length>1?14:16}" font-weight="700" font-family="-apple-system,system-ui,sans-serif" fill="currentColor">${n}</text></svg>`;
+const sysIcon = k => String(k).startsWith('num:') ? numIcon(String(k).slice(4)) : SYS_ICONS[k];
+const sysNr = id => (settings.custom||[]).findIndex(c=>c.id===id)+1;
 // Neutrale Symbole für die Messsysteme (Messmodul, Mikrocontroller, Smartphone)
 const SYS_ICONS = {
   daq:   '<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect x="2.5" y="5" width="21" height="16" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5.5 13c1.5-4 3-4 4.5 0s3 4 4.5 0 3-4 4.5 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
@@ -1003,12 +1012,16 @@ function pflichtFehlendKeys(t, o, d){
   if(leer(t.name)) add('name','Name des Messtermins');
   if(leer(t.datum)) add('datum','Datum');
   if(leer(t.messleiter)) add('messleiter','Messleiter');
+  // Zahlenwert ohne (erkannte) Einheit gilt als unvollständig
+  const ohneEinheit = (v,art) => { const p=wertParse(v,art); return p.ok && !(p.e && p.erkannt); };
+  if(ohneEinheit(t.windgeschwindigkeit,'wind')) add('windgeschwindigkeit','Windgeschwindigkeit: Einheit');
   const sys=systemeVon(t);
   if(!sys.length) add('systeme','Messsysteme');
   if(leer(o.messobjekt)) add('messobjekt','Messobjekt');
   if(leer(o.zweck)) add('zweck','Zweck');
   if(leer(o.erregung)) add('erregung','Art der Anregung');
   for(const x of sys){
+    if(ohneEinheit(val(o,'sys_'+x.id+'_dauer',SYS_CFG[x.id].dauer.def),'dauer')) add('sys:'+x.id+':dauer', x.name+': Messdauer (Einheit)');
     const sens=sensorenVon(x.id,o,t);
     if(!sens.length){ add('sys:'+x.id+':sens', x.name+': Sensor'); continue; }
     if(sens.some(nr=>leer(posWert(o,ortKey(x.id,nr))))) add('sys:'+x.id+':ort', x.name+': Sensorstandort');
@@ -1021,12 +1034,20 @@ function pflichtFehlendKeys(t, o, d){
     if(leer(d.hammer_spitze)) add('hammer_spitze','Hammerspitze');
     if(leer(d.hammer_richtung)) add('hammer_richtung','Anregungsrichtung');
   }
-  if(erregungenVon(o).includes('Shaker') && leer(d.shaker_richtung)) add('shaker_richtung','Shaker: Anregungsrichtung');
+  if(erregungenVon(o).includes('Shaker')){
+    if(leer(d.shaker_richtung)) add('shaker_richtung','Shaker: Anregungsrichtung');
+    if(ohneEinheit(d.shaker_kraft,'kraft')) add('shaker_kraft','Shaker: Kraft / Amplitude (Einheit)');
+  }
+  if(erregungenVon(o).includes('Unwuchterreger')){
+    if(ohneEinheit(d.unw_frequenz,'frq')) add('unw_frequenz','Unwuchterreger: Drehzahl / Frequenz (Einheit)');
+    if(ohneEinheit(d.unw_moment,'moment')) add('unw_moment','Unwuchterreger: Unwuchtmoment (Einheit)');
+  }
   if(erregungenVon(o).includes('Glocken')){
     if(!glockenListe(d).length) add('glocken','Glocken');
     for(const n of glockenListe(d)){
       if(leer(d['glocke_'+n+'_masse'])) add('glocke_'+n+'_masse','Glocke '+n+': Masse');
       if(leer(d['glocke_'+n+'_frq'])) add('glocke_'+n+'_frq','Glocke '+n+': Läutefrequenz');
+      else if(ohneEinheit(d['glocke_'+n+'_frq'],'frq')) add('glocke_'+n+'_frq','Glocke '+n+': Läutefrequenz (Einheit)');
       if(leer(d['glocke_'+n+'_richtung'])) add('glocke_'+n+'_richtung','Glocke '+n+': Läuterichtung');
     }
   }
@@ -1084,6 +1105,40 @@ async function sicherungExport(liste){
     offerFile(new File([JSON.stringify(paket)], name.replace('Messtermin__','Messtermin_'), {type:'application/json'}));
   }catch(e){ s.close(); alert('Sicherung konnte nicht erstellt werden: '+e.message); }
 }
+// Import: Messtermine einzeln auswählen, bei eigenen Messsystemen zusätzlich deren Übernahme
+function importAuswahl(paket){
+  return new Promise(res=>{
+    const lokal = m => SYSTEME.some(x=>x.name.toLowerCase()===String(m.name).toLowerCase() || x.id===m.id);
+    const quelle = {};
+    (paket.messsysteme||[]).forEach(m=>{ if(m && m.id && m.name) quelle[m.id]={id:m.id, name:m.name, daten:m.daten||{}}; });
+    const info = paket.termine.map(te=>{
+      const d=(te.termin&&te.termin.data)||{}, namen=String(d.systeme||'').split(',').map(x=>x.trim()).filter(Boolean), g=d.geraete||{}, ids=[];
+      for(const id in g){ const r=g[id]; if(r && r.custom && namen.includes(r.name)){ if(!quelle[id]){ const daten=Object.assign({},r); delete daten.id; delete daten.name; delete daten.custom; quelle[id]={id, name:r.name, daten}; } ids.push(id); } }
+      namen.forEach(nm=>{ const q=Object.values(quelle).find(x=>x.name===nm); if(q && !ids.includes(q.id)) ids.push(q.id); });
+      return {d, sys:ids.filter(id=>!lokal(quelle[id]))};
+    });
+    const zeilen = paket.termine.map((te,i)=>{
+      const d=info[i].d, n=(te.objekte||[]).length, m=(te.objekte||[]).reduce((a,o)=>a+(o.messungen||[]).length,0);
+      const sub = info[i].sys.map(id=>`<label class="imp-sub"><span>Messsystem „${esc(quelle[id].name)}“ übernehmen</span><input type="checkbox" class="ios-switch" data-isys="${i}:${id}" checked></label>`).join('');
+      return `<div class="imp-t"><label class="imp-row"><span style="flex:1"><b>${esc(d.name||'ohne Namen')}</b><br><span class="muted small">${esc([fmtDate(d.datum), n+' Objekt'+(n===1?'':'e'), m+' Messung'+(m===1?'':'en')].filter(Boolean).join(' · '))}</span></span><input type="checkbox" class="imp-chk" data-it="${i}" checked></label>${sub}</div>`;
+    }).join('');
+    const sh=sheet(`<h3>Messtermine importieren</h3>
+      <style>.imp-list{max-height:46vh; overflow:auto; padding:0 16px 4px; text-align:left}.imp-t{padding:8px 0; border-top:1px solid var(--line,#ddd)}.imp-t:first-child{border-top:0}.imp-row{display:flex; align-items:center; gap:12px}.imp-sub{display:flex; align-items:center; justify-content:space-between; gap:12px}.imp-chk{appearance:none; -webkit-appearance:none; flex:none; width:44px; height:22px; margin:0; border:0; background:none; cursor:pointer}.imp-chk:checked{background-color:var(--ink); -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Cpath d='M4 11.5l4.5 4.5L18 6.5' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/22px 22px no-repeat; mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 22'%3E%3Cpath d='M4 11.5l4.5 4.5L18 6.5' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/22px 22px no-repeat}.imp-sub{margin:8px 0 0 10px; font-size:14px}.imp-sub.aus{opacity:.4}</style>
+      <div class="imp-list">${zeilen}</div>
+      <button class="btn primary" data-x="ok" id="impOk">Importieren</button>
+      <button class="btn" data-x="close">Abbrechen</button>`, (x,close)=>{
+        if(x==='close'){ close(); return res(null); }
+        const termine=[], sys=[];
+        sh.el.querySelectorAll('[data-it]').forEach(c=>{ if(c.checked) termine.push(paket.termine[+c.dataset.it]); });
+        sh.el.querySelectorAll('[data-isys]').forEach(c=>{ const [i,id]=c.dataset.isys.split(':'); if(c.checked && sh.el.querySelector(`[data-it="${i}"]`).checked && !sys.some(q=>q.id===id)) sys.push(quelle[id]); });
+        close(); res({termine, sys});
+      });
+    const upd=()=>{ const k=[...sh.el.querySelectorAll('[data-it]')].filter(c=>c.checked).length, b=sh.el.querySelector('#impOk');
+      b.textContent = k ? (k===1?'1 Messtermin importieren':k+' Messtermine importieren') : 'Nichts ausgewählt'; b.disabled=!k;
+      sh.el.querySelectorAll('[data-isys]').forEach(c=>{ const on=sh.el.querySelector(`[data-it="${c.dataset.isys.split(':')[0]}"]`).checked; c.disabled=!on; c.closest('.imp-sub').classList.toggle('aus',!on); }); };
+    sh.el.querySelectorAll('input[type=checkbox]').forEach(c=>c.onchange=upd); upd();
+  });
+}
 async function sicherungImport(datei){
   let paket;
   let text='';
@@ -1091,19 +1146,14 @@ async function sicherungImport(datei){
   catch(e){ return alert('Die Datei konnte nicht gelesen werden: '+e.message); }
   try{ paket=JSON.parse(text); }catch(e){ return alert('Die Datei „'+datei.name+'“ ist keine gültige Sicherung.'); }
   if(!paket || paket.app!=='messbericht' || !Array.isArray(paket.termine)) return alert('Die Datei ist keine Sicherung der Messbericht-App.');
-  const n=paket.termine.length;
-  if(!confirm(n+' Messtermin'+(n===1?'':'e')+' importieren? Vorhandene Messtermine bleiben unverändert, die importierten kommen als neue Einträge dazu.')) return;
-  // Eigene Messsysteme aus der Sicherung (nur solche, die es hier noch nicht gibt)
-  const neueSys=(Array.isArray(paket.messsysteme)?paket.messsysteme:[]).filter(m=>m && m.id && m.name && !SYSTEME.some(x=>x.name.toLowerCase()===String(m.name).toLowerCase() || x.id===m.id));
-  let sysUebernehmen=false;
-  if(neueSys.length){
-    const w=await systemWahl('Eigene Messsysteme','Die Sicherung enthält Messsysteme, die es hier noch nicht gibt. In die Einstellungen übernehmen?', neueSys.map(m=>m.name), 'Übernehmen', 'Nicht übernehmen');
-    if(w===null) return; sysUebernehmen=w;
-  }
+  const wahl = await importAuswahl(paket);
+  if(!wahl) return;
+  const n=wahl.termine.length, neueSys=wahl.sys, sysUebernehmen=neueSys.length>0;
+  paket={...paket, termine:wahl.termine};
   const s=sheet(`<h3>Import läuft …</h3>`,()=>{});
   try{
     if(sysUebernehmen){
-      neueSys.forEach(m=>{ settings.custom=(settings.custom||[]).concat([{id:m.id,name:m.name}]); settings.sys[m.id]=Object.assign({geraetetyp:m.name,aafilter:'',abtastrate:'',sensoren:'1, 2, 3'}, m.daten||{}); });
+      neueSys.forEach(m=>{ if(SYSTEME.some(x=>x.id===m.id||x.name.toLowerCase()===m.name.toLowerCase())) return; settings.custom=(settings.custom||[]).concat([{id:m.id,name:m.name}]); settings.sys[m.id]=Object.assign({geraetetyp:m.name,aafilter:'',abtastrate:'',sensoren:'1, 2, 3'}, m.daten||{}); });
       syncSysteme(); saveSettings(settings);
     }
     const bilderRein = async (liste, mid)=>{ for(const b of liste||[]) await put('bilder',{id:uid(), mid, blob:await textZuBlob(b.data), w:b.w, h:b.h, caption:b.caption||'', order:b.order||Date.now()}); };
@@ -1524,7 +1574,7 @@ function terminZeilen(t, fehl){
   // Zeilen ohne Trennlinie darunter (zusammengehörige Angaben): Name|Datum, Wind|Richtung|Temperatur, Firma|Messleiter
   return [
     ['Name', t.name, 0, 'name', 1], ['Datum', fmtDate(t.datum), 1, 'datum'],
-    ['Windgeschwindigkeit', t.windgeschwindigkeit, 2, '', 1], ['Windrichtung', t.windrichtung, 2, '', 1], ['Temperatur', fmtTemp(t.temperatur), 3],
+    ['Windgeschwindigkeit', t.windgeschwindigkeit, 2, 'windgeschwindigkeit', 1], ['Windrichtung', t.windrichtung, 2, '', 1], ['Temperatur', fmtTemp(t.temperatur), 3],
     ['Firma', t.firma, 4, '', 1], ['Messleiter', t.messleiter, 4, 'messleiter'], ['Messsysteme', t.systeme, 5, 'systeme']
   ].map(([l,v,i,k,ohne])=>`<button class="rv ${k&&fehl.has(k)?'fehlt':''} ${ohne?'nolinie':''}" data-kat="${['Messtermin','Messtermin','Witterung','Witterung','Institution','Messgeräte'][i]}" data-tstep="${i}"><span class="k">${l}</span><span class="v">${v?esc(v):(k&&fehl.has(k)?'fehlt':'–')}</span></button>`).join('');
 }
@@ -1543,7 +1593,7 @@ function objektZeilen(o, oImgs, sysListe, fehl){
       ? sysListe.map(x=>{
           const sens=sensorenVon(x.id,o), du=val(o,'sys_'+x.id+'_dauer',SYS_CFG[x.id].dauer.def);
           const sTxt = SYS_CFG[x.id].sensorText ? sens.join('') : (sens.length ? 'Sensoren '+sens.join(', ') : 'keine Sensoren');
-          let h = `<button class="rv ${fehl.has('sys:'+x.id+':sens')?'fehlt':''} ${sens.length?'nolinie':''}" data-kat="Messsysteme" data-ostep="${stepIndex(x.id,1)}"><span class="k">${esc(x.name)}</span><span class="v">${esc([du,sTxt].filter(Boolean).join(', '))||'–'}</span></button>`;
+          let h = `<button class="rv ${fehl.has('sys:'+x.id+':sens')||fehl.has('sys:'+x.id+':dauer')?'fehlt':''} ${sens.length?'nolinie':''}" data-kat="Messsysteme" data-ostep="${stepIndex(x.id,1)}"><span class="k">${esc(x.name)}</span><span class="v">${esc([du,sTxt].filter(Boolean).join(', '))||'–'}</span></button>`;
           if(sens.length) h += `<button class="rv ${fehl.has('sys:'+x.id+':ort')?'fehlt':''}" data-kat="Messsysteme" data-ostep="${stepIndex(x.id,2)}"><span class="k">Sensorstandort</span><span class="v">${esc(sens.map(nr=>(SYS_CFG[x.id].sensorText?'':nr+': ')+(posWert(o,ortKey(x.id,nr))||'–')).join('\n'))}</span></button>`;
           return h; }).join('')
       : `<p class="muted small">Beim Messtermin sind keine Messsysteme ausgewählt.</p>`);
@@ -1644,7 +1694,7 @@ function objektVerschieben(o){
 }
 
 /* ---------- Unvollständigkeit auf Objekt- und Terminebene ---------- */
-const OBEN_KEYS = new Set(['name','datum','messleiter','systeme','messobjekt','zweck','erregung']);
+const OBEN_KEYS = new Set(['name','datum','messleiter','systeme','windgeschwindigkeit','messobjekt','zweck','erregung']);
 function objektUnvollst(t, o){
   const ms = messungenOfO(o.id);
   if(ms.length) return ms.some(m=>pflichtFehlend(t.data, o.data, m.data).length);
@@ -1654,7 +1704,7 @@ function objektUnvollst(t, o){
 function terminUnvollst(t){
   const os = objekteOf(t.id);
   if(os.length) return os.some(o=>objektUnvollst(t,o));
-  return pflichtFehlendKeys(t.data, {}, {}).some(x=>['name','datum','messleiter','systeme'].includes(x.k));
+  return pflichtFehlendKeys(t.data, {}, {}).some(x=>['name','datum','messleiter','systeme','windgeschwindigkeit'].includes(x.k));
 }
 
 /* ---------- Einheitliche Kapseln (vorbehaltlich): Text = Übersicht dieser Ebene, Pfeil = auf/zu ---------- */
@@ -1714,7 +1764,7 @@ function fieldHTML(f, single){
     h += `<div class="chips stack noic">${f.chips.map(c=>`<div class="chip srow ${parts.includes(c)?'on':''}" role="button" data-tog="${f.k}" data-val="${esc(c)}"><span>Sensor</span><input class="sname" data-sid="${f.rename}" data-alt="${esc(c)}" value="${esc(c)}" inputmode="numeric" autocomplete="off" aria-label="Bezeichnung Sensor ${esc(c)}"></div>`).join('')}</div>`;
   } else if(f.chips){
     const parts = String(v).split(',').map(s=>s.trim());
-    h += `<div class="chips ${f.stack?'stack':''} ${f.stack&&!f.icons?'noic':''}">${f.chips.map(c=>`<button class="chip ${(f.toggle?parts.includes(c):v===c)?'on':''} ${!f.stack && String(c).length===1?'rund':''}" data-${f.toggle?'tog':'set'}="${f.k}" data-val="${esc(c)}">${f.icons&&f.icons[c]?`<span class="chip-ic">${SYS_ICONS[f.icons[c]]}</span>`:''}<span>${esc(f.chipLabel?f.chipLabel(c):c)}</span></button>`).join('')}</div>`;
+    h += `<div class="chips ${f.stack?'stack':''} ${f.stack&&!f.icons?'noic':''}">${f.chips.map(c=>`<button class="chip ${(f.toggle?parts.includes(c):v===c)?'on':''} ${!f.stack && String(c).length===1?'rund':''}" data-${f.toggle?'tog':'set'}="${f.k}" data-val="${esc(c)}">${f.icons&&f.icons[c]?`<span class="chip-ic">${sysIcon(f.icons[c])}</span>`:''}<span>${esc(f.chipLabel?f.chipLabel(c):c)}</span></button>`).join('')}</div>`;
   }
   if(f.parse) h += `<p class="muted small" data-frqinfo="${f.k}" style="margin:8px 0 0">${esc(wertInfo(v,f.parse))}</p>`;
   if(f.hint) h += `<p class="muted small" style="margin:10px 0 0">${esc(f.hint)}</p>`;
@@ -1754,7 +1804,7 @@ async function showStep(){
   }
   const last = step===STEPS.length-1;
   const title = kind==='termin' ? 'Messtermin' : kind==='objekt' ? objektTitel(termin&&termin.data, cur.data) : messungTitel(termin&&termin.data, objekt&&objekt.data, cur.data);
-  const wm = s.sys ? `<div class="wm" aria-hidden="true">${SYS_ICONS[{ni:'daq',arduino:'chip',phyphox:'phone'}[s.sys]||'daq']}</div>` : '';
+  const wm = s.sys ? `<div class="wm" aria-hidden="true">${(()=>{ const x=SYSTEME.find(y=>y.id===s.sys); return x&&x.custom ? numIcon(sysNr(x.id)) : SYS_ICONS[{ni:'daq',arduino:'chip',phyphox:'phone'}[s.sys]||'daq']; })()}</div>` : '';
   $('#app').innerHTML = `<div class="wrap">
     <div class="bar"><button class="icon-btn back-btn" id="upBtn" aria-label="Zurück zu ${({termin:'Terminen', objekt:'Termin', messung:'Objekt'})[kind]}">${backIcon()}</button><h2>${esc(title)}</h2><button class="icon-btn more-btn" id="revBtn" aria-label="Menü">${moreIcon()}</button></div>
     ${tape}
@@ -1999,6 +2049,7 @@ function showSettings(){
     <div class="field"><label for="s_messleiter">Messleiter</label>${inp('s_messleiter',settings.messleiter)}</div>
     <h3 class="set-h set-hplus"><span>Messsysteme</span><button class="plus-btn" id="addSysBtn" aria-label="Neues Messsystem anlegen"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></button></h3>
     ${SYSTEME.map(x=>`<details class="sek" data-sysid="${x.id}" style="margin-bottom:4px"><summary><span class="st">${esc(x.name)}</span><svg class="chev" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+      ${x.custom?`<div class="field"><label for="s_${x.id}_n">Name</label>${inp('s_'+x.id+'_n',x.name)}<p class="small" id="s_${x.id}_nh" style="margin:8px 0 0; color:var(--danger)"></p></div>`:''}
       <div class="field"><label for="s_${x.id}_g">Gerätetyp</label>${inp('s_'+x.id+'_g',settings.sys[x.id].geraetetyp,true)}</div>
       <div class="field"><label for="s_${x.id}_a">Anti-Aliasing-Filter</label>${(()=>{ const v=String(settings.sys[x.id].aafilter||''); return `<div class="unitwrap${/\d/.test(v)&&!/[A-Za-zÄÖÜäöüß]/.test(v)?' ue':''}"><span class="unit" aria-hidden="true"><span class="uv">${esc(v)}</span> Hz</span><input class="inp uinp" id="s_${x.id}_a" type="text" data-num="1" inputmode="decimal" value="${esc(v)}" placeholder="Grenzfrequenz [Hz]" autocomplete="off"></div>`; })()}</div>
       <div class="field"><label for="s_${x.id}_r">AD-Wandlung</label>${inp('s_'+x.id+'_r',settings.sys[x.id].abtastrate)}<p class="muted small" id="s_${x.id}_rinfo" style="margin:8px 0 0"></p></div>
@@ -2040,20 +2091,38 @@ function showSettings(){
       });
     setTimeout(()=>{ const i=$('#sysName'); if(i && !('ontouchstart' in window)) i.focus(); },50);
   };
+  // Eigene Messsysteme umbenennen (bestehende Messtermine behalten ihre Kopie und damit den bisherigen Namen)
+  SYSTEME.filter(x=>x.custom).forEach(x=>{
+    const el=$('#s_'+x.id+'_n'); if(!el) return;
+    el.addEventListener('change',()=>{
+      const c=(settings.custom||[]).find(y=>y.id===x.id), hint=$('#s_'+x.id+'_nh'), neu=el.value.trim().replace(/\s+/g,' ');
+      let fehler='';
+      if(!neu) fehler='Bitte einen Namen eingeben.';
+      else if(neu.includes(',')) fehler='Der Name darf kein Komma enthalten.';
+      else if(SYSTEME.some(y=>y.id!==x.id && y.name.toLowerCase()===neu.toLowerCase())) fehler='Ein Messsystem mit diesem Namen gibt es schon.';
+      if(fehler){ hint.textContent=fehler; el.value=c.name; return; }
+      hint.textContent=''; if(neu===c.name) return;
+      const alt=c.name; c.name=neu; if(settings.sys[x.id] && settings.sys[x.id].geraetetyp===alt) settings.sys[x.id].geraetetyp=neu;
+      syncSysteme(); saveSettings(settings); el.value=neu;
+      const g=$('#s_'+x.id+'_g'); if(g) g.value=settings.sys[x.id].geraetetyp;
+      const st=el.closest('details').querySelector('.st'); if(st) st.textContent=neu;
+    });
+  });
   document.querySelectorAll('[data-delsys]').forEach(b=>b.onclick=async()=>{
     const id=b.dataset.delsys, sys=SYSTEME.find(y=>y.id===id); if(!sys) return;
     // Prüfen, ob das Messsystem bei Messterminen verwendet wird
-    let ts=[]; try{ ts=(await getAll('termine')).filter(t=>String((t.data&&t.data.systeme)||'').split(',').map(x=>x.trim()).includes(sys.name)); }catch(e){}
+    let ts=[]; try{ ts=(await getAll('termine')).filter(t=>{ const n=String((t.data&&t.data.systeme)||'').split(',').map(x=>x.trim()), sn=t.data&&t.data.geraete&&t.data.geraete[id]; return n.includes(sys.name) || !!(sn && n.includes(sn.name)); }); }catch(e){}
     const nenn=t=>esc([(t.data&&t.data.name)||'ohne Namen', fmtDate(t.data&&t.data.datum)].filter(Boolean).join(', '));
     const loeschen=()=>{ settings.custom=(settings.custom||[]).filter(c=>c.id!==id); delete settings.sys[id]; delete SYS_CFG[id]; syncSysteme(); saveSettings(settings); showSettings(); };
     if(ts.length){
-      sheet(`<p class="small" style="margin:0 0 4px"><b>„${esc(sys.name)}“ wird verwendet</b> in ${ts.length===1?'1 Messtermin':ts.length+' Messterminen'}:<br>${ts.slice(0,8).map(nenn).join('<br>')}${ts.length>8?'<br>… und '+(ts.length-8)+' weitere':''}</p>
-        <p class="small" style="margin:0">Löschst du es trotzdem, wird es dort nicht mehr angezeigt und nicht mehr in den Bericht übernommen. Die gespeicherten Messdaten bleiben erhalten.</p>
-        <button class="btn" data-x="del" style="color:var(--danger)">Dennoch löschen</button>
+      sheet(`<p class="small" style="margin:0; padding:16px 16px 8px; text-align:left"><b>„${esc(sys.name)}“ wird verwendet:</b></p>
+        <ul class="small" style="margin:0; padding:0 16px 8px 34px; text-align:left">${ts.slice(0,3).map(t=>'<li>'+nenn(t)+'</li>').join('')}${ts.length>3?'<li>…</li>':''}</ul>
+        <p class="small" style="margin:0">Löschen verändert bestehende Messungen nicht.<br>Es steht aber für neue Messungen nicht mehr zur Verfügung.</p>
+        <button class="btn" data-x="del" style="color:var(--danger); display:inline-flex; align-items:center; justify-content:center; gap:8px">${trashIcon()}<span>Dennoch löschen</span></button>
         <button class="btn" data-x="close">Abbrechen</button>`, (x,close)=>{ close(); if(x==='del') loeschen(); });
     } else {
-      sheet(`<p class="small" style="margin:0">„${esc(sys.name)}“ wird bei keinem Messtermin verwendet.</p>
-        <button class="btn" data-x="del" style="color:var(--danger)">Löschen</button>
+      sheet(`<p style="margin:0; padding:16px; text-align:center"><b>Messsystem „${esc(sys.name)}“ wirklich löschen?</b></p>
+        <button class="btn" data-x="del" style="color:var(--danger); display:inline-flex; align-items:center; justify-content:center; gap:8px">${trashIcon()}<span>Löschen</span></button>
         <button class="btn" data-x="close">Abbrechen</button>`, (x,close)=>{ close(); if(x==='del') loeschen(); });
     }
   });
@@ -2089,10 +2158,10 @@ function reportFields(m){
     zweck:o.zweck, messobjekt:[o.messobjekt, o.objekt_notizen, d.mess_notizen, zugkraftText(d.zugkraft)?'Zugkraft: '+zugkraftText(d.zugkraft):''].filter(x=>String(x||'').trim()).join('\n'), ...geraeteFelder(t,d),
     ...sensorFelder(t,o,d), erregung:erregungText(o,d),
     ergaenzungen: lines([['Personenanzahl',d.personen],['Gewicht',mitEinheit(d.gewicht,'kg')],['Erkennbare Quellen',d.amb_quellen],
-      ['Impulshammer',mitEinheit(d.hammer_typ,'g')],['Hammerspitze',d.hammer_spitze],['Anschlagrichtung',d.hammer_richtung],
+      ['Impulshammer-Produkt',d.hammer_produkt],['Impulshammer',mitEinheit(d.hammer_typ,'g')],['Hammerspitze',d.hammer_spitze],['Anschlagrichtung',d.hammer_richtung],
       ['Glockenanzahl',glockenListe(d).length||''],...glockenListe(d).map(n=>[glockeName(d,n), [mitEinheit(d['glocke_'+n+'_masse'],'kg'), d['glocke_'+n+'_frq'], String(d['glocke_'+n+'_richtung']||'').trim()?'Läuterichtung '+String(d['glocke_'+n+'_richtung']).trim():''].map(x=>String(x||'').trim()).filter(Boolean).join(', ')]),
-      ['Shaker-Signal',d.shaker_signal],['Shaker-Frequenz',mitEinheit(d.shaker_frequenz,'Hz')],['Shaker-Kraft',d.shaker_kraft],['Shaker-Position',anschlagWert(o,d,'shaker_ort')],['Shaker-Richtung',d.shaker_richtung],
-      ['Unwuchterreger-Frequenz',d.unw_frequenz],['Unwuchtmoment',d.unw_moment],['Unwuchterreger-Position',d.unw_ort]], d.ergaenzungen_sonst),
+      ['Shaker-Produkt',d.shaker_produkt],['Shaker-Signal',d.shaker_signal],['Shaker-Frequenz',mitEinheit(d.shaker_frequenz,'Hz')],['Shaker-Kraft',d.shaker_kraft],['Shaker-Position',anschlagWert(o,d,'shaker_ort')],['Shaker-Richtung',d.shaker_richtung],
+      ['Unwuchterreger-Produkt',d.unw_produkt],['Unwuchterreger-Frequenz',d.unw_frequenz],['Unwuchtmoment',d.unw_moment],['Unwuchterreger-Position',d.unw_ort]], d.ergaenzungen_sonst),
     notizen: lines([['Spürbarkeit',d.spuerbarkeit],['Sekundäreffekte',d.sekundaer]], d.notizen_sonst) };
 }
 // Messgeräte aus den beim Termin gewählten Systemen zusammensetzen
