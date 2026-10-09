@@ -547,9 +547,9 @@ const SYSTEME_BASIS = [
 const SYSTEME = SYSTEME_BASIS.slice();   // Basissysteme + selbst angelegte (settings.custom), siehe syncSysteme()
 // Gerätedaten pro Messsystem: landen im Bericht unter „Messgeräte“
 const SYS_DEFAULTS = {
-  ni:      {geraetetyp:'National Instruments', aafilter:'', abtastrate:'', sensoren:'71, 72, 73, 74, 75, 76'},
-  arduino: {geraetetyp:'Arduino', aafilter:'', abtastrate:'', sensoren:'01, 02, 03'},
-  phyphox: {geraetetyp:'Phyphox (Smartphone-App)', aafilter:'', abtastrate:'', sensor:'iPhone13,1, (26.6.1)'}
+  ni:      {geraetetyp:'National Instruments', aafilter:'', abtastrate:'25600 Hz (1/0,0390625ms)', sensoren:'71, 72, 73, 74, 75, 76'},
+  arduino: {geraetetyp:'Arduino', aafilter:'', abtastrate:'200 Hz (1/0,005s)', sensoren:'01, 02, 03'},
+  phyphox: {geraetetyp:'Phyphox (Smartphone-App)', aafilter:'', abtastrate:'100 Hz (1/0,01s)', sensor:'iPhone13,1, (26.6.1)'}
 };
 const DEFAULTS = { firma:'TU München', messleiter:'Clemens Koller' };
 function freshSettings(){ return Object.assign({}, DEFAULTS, {sys: JSON.parse(JSON.stringify(SYS_DEFAULTS)), custom:[]}); }
@@ -561,6 +561,8 @@ function loadSettings(){
     if(st.messleiter!=null) s.messleiter=st.messleiter;
     if(Array.isArray(st.custom)) s.custom = st.custom.filter(c=>c && c.id && c.name);
     if(st.sys) for(const k in st.sys) s.sys[k] = Object.assign(s.sys[k]||{}, st.sys[k]||{});
+    // Noch nie eingetragene Abtastrate der Messsysteme übernimmt die neue Voreinstellung
+    ['ni','arduino','phyphox'].forEach(id=>{ const r=s.sys[id]; if(r && (!String(r.abtastrate||'').trim() || (id==='ni' && r.abtastrate==='25600 Hz (1/0,0000390625s)'))) r.abtastrate=SYS_DEFAULTS[id].abtastrate; });
     // Frühere Arduino-Voreinstellungen aus der Word-Vorlage entfernen, sofern unverändert gespeichert
     const alt = {geraetetyp:'MPU 6050 – Beschleunigungssensor ±4g\nArduino, MKR ZERO - Mikrocontroller', aafilter:'94 Hz (Tiefpassfilter)', abtastrate:'200 Hz (1/0.005s)'};
     for(const k in alt) if(s.sys.arduino[k]===alt[k]) s.sys.arduino[k]=SYS_DEFAULTS.arduino[k];
@@ -2032,13 +2034,16 @@ function abtastNorm(t){
   t=String(t||'').trim(); if(!t) return null;
   t=t.replace(/\(.*$/,'').trim();                       // alter Zusatz in Klammern wird neu berechnet
   const z=x=>parseFloat(String(x).replace(',','.')); let m, hz=null;
-  if((m=/^1\s*\/\s*([\d.,]+)\s*(s|sek)?$/i.exec(t))) hz=1/z(m[1]);
+  if((m=/^1\s*\/\s*([\d.,]+)\s*ms$/i.exec(t))) hz=1000/z(m[1]);
+  else if((m=/^1\s*\/\s*([\d.,]+)\s*(s|sek)?$/i.exec(t))) hz=1/z(m[1]);
   else if((m=/^([\d.,]+)\s*ms$/i.exec(t))) hz=1000/z(m[1]);
   else if((m=/^([\d.,]+)\s*(khz|ks\/s|ksps)$/i.exec(t))) hz=z(m[1])*1000;
   else if((m=/^([\d.,]+)\s*(hz|hertz|s\/s|sps|1\/s)$/i.exec(t))) hz=z(m[1]);
   else if((m=/^([\d.,]+)\s*(s|sek)$/i.exec(t))) hz=1/z(m[1]);
   if(hz==null || !isFinite(hz) || hz<=0) return {fehler:/\d/.test(t) ? 'Einheit fehlt oder nicht erkannt (z. B. 200 Hz)' : ''};
-  return {hz, text: zahlDE(hz)+' Hz (1/'+zahlDE(1/hz)+'s)', info:'Abtastrate '+zahlDE(hz)+' Hz; Δt = '+zahlDE(1/hz)+' s'};
+  // sehr kleine Zeitabstände (< 1 ms) in ms angeben
+  const dt=1/hz, ms=dt<0.001, dtT=ms ? zahlDE(dt*1000)+' ms' : zahlDE(dt)+' s';
+  return {hz, text: zahlDE(hz)+' Hz (1/'+(ms ? zahlDE(dt*1000)+'ms' : zahlDE(dt)+'s')+')', info:'Abtastrate '+zahlDE(hz)+' Hz; Δt = '+dtT};
 }
 function showSettings(){
   const inp=(id,val,area)=> area?`<textarea class="inp" id="${id}">${esc(val)}</textarea>`:`<input class="inp" id="${id}" value="${esc(val)}">`;
@@ -2071,7 +2076,7 @@ function showSettings(){
   bind('s_firma',v=>settings.firma=v); bind('s_messleiter',v=>settings.messleiter=v);
   SYSTEME.forEach(x=>{ bind('s_'+x.id+'_g',v=>settings.sys[x.id].geraetetyp=v); bind('s_'+x.id+'_a',v=>settings.sys[x.id].aafilter=v); bind('s_'+x.id+'_r',v=>settings.sys[x.id].abtastrate=v); bind('s_'+x.id+'_s',v=>{ if(SYS_CFG[x.id].sensorText) settings.sys[x.id].sensor=v; else settings.sys[x.id].sensoren=v; }); });
   SYSTEME.forEach(x=>{ const el=$('#s_'+x.id+'_r'), info=$('#s_'+x.id+'_rinfo'); if(!el) return; el.placeholder='Abtastrate [Hz]';
-    const zeig=()=>{ const n=abtastNorm(el.value); info.textContent = n ? (n.info||n.fehler||'') : ''; };
+    const zeig=()=>{ const n=abtastNorm(el.value); info.textContent = n ? (n.info||n.fehler||'') : ''; info.style.color = n && n.fehler ? 'var(--danger)' : ''; };
     el.addEventListener('input',zeig);
     el.addEventListener('change',()=>{ const n=abtastNorm(el.value); if(n && n.text){ el.value=n.text; settings.sys[x.id].abtastrate=n.text; saveSettings(settings); } zeig(); });
     zeig(); });
