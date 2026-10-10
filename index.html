@@ -1795,8 +1795,12 @@ function listenKapseln(){
 
 // Unterzeile in Listen: Umbruch nur zwischen den einzelnen Angaben (nach dem Komma), nie mitten in einer Angabe
 function metaHTML(teile){
-  return teile.filter(Boolean).flatMap(t=>String(t).split(/,\s*/)).filter(x=>x.trim())
-    .map((x,i,arr)=>`<span class="nb">${esc(x.trim())}${i<arr.length-1?',':''}</span>`).join(' ');
+  // Einzelne Angaben werden mit Semikolon getrennt; Kommas innerhalb einer Angabe (auch Dezimalkommas) bleiben unverändert
+  const teilListe=teile.filter(Boolean).map(t=>String(t).trim()).filter(Boolean);
+  return teilListe.map((t,ti)=>{
+    const stuecke=t.split(/,\s+/).filter(x=>x.trim());
+    return stuecke.map((x,i)=>`<span class="nb">${esc(x.trim())}${i<stuecke.length-1?',':(ti<teilListe.length-1?';':'')}</span>`).join(' ');
+  }).join(' ');
 }
 /* ---------- Abfrage (für Termin, Messobjekt und Messung) ---------- */
 function recentValues(k){
