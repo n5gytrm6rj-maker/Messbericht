@@ -748,7 +748,7 @@ const PARSE_REGELN = {
   moment:{ hinweis:'kg·m, kg·cm, kg·mm, g·cm oder g·mm', regeln:[['kg·m',/^(kg[·*.]?m|kgm)$/],['kg·cm',/^(kg[·*.]?cm)$/],['kg·mm',/^(kg[·*.]?mm)$/],['g·cm',/^(g[·*.]?cm)$/],['g·mm',/^(g[·*.]?mm)$/]] },
   wind: { hinweis:'m/s oder km/h', regeln:[['m/s',/^(m\/s|m\/sek|m\/sec|ms-1|m\*s-1|mps|meterprosekunde|mpros(ek)?)$/],['km/h',/^(km\/h|kmh|km\/std|kph|kilometerprostunde|kmproh|kmprostunde)$/]] }
 };
-const parseArt = k => /^glocke_\d+_frq$/.test(k||'') ? 'frq' : k==='windgeschwindigkeit' ? 'wind' : k==='shaker_kraft' ? 'kraft' : k==='unw_frequenz' ? 'frq' : k==='unw_moment' ? 'moment' : /^sys_.+_dauer$/.test(k||'') ? 'dauer' : /^sys_.+_abtast$/.test(k||'') ? 'abtast' : '';
+const parseArt = k => /^glocke_\d+_frq$/.test(k||'') ? 'frq' : k==='windgeschwindigkeit' ? 'wind' : k==='shaker_kraft' ? 'kraft' : k==='unw_frequenz' ? 'frq' : k==='unw_moment' ? 'moment' : /^sys_.+_dauer$/.test(k||'') ? 'dauer' : /^sys_.+_abtast$/.test(k||'') ? 'abtast' : /^sys_.+_genau$/.test(k||'') ? 'genau' : '';
 // Anzeige: erkannte Einheit in eckigen Klammern („1,5 h“ → „1,5 [h]“); gespeichert wird ohne Klammern
 const entklammert = t => String(t==null?'':t).replace(/\s*\[([^\]]*)\]\s*/g,' $1 ').trim();
 function klammer(t, art){ if(art==='abtast') return abtastAnz(t); if(art==='genau') return genauAnz(t); if(!art||!PARSE_REGELN[art]) return t; const p=wertParse(t,art); return p.ok && p.e && p.erkannt ? p.z+' ['+p.e+']' : t; }
@@ -1443,6 +1443,11 @@ async function showObjekt(){
   
   
   document.querySelectorAll('[data-sel]').forEach(b=>b.onclick=()=>{ const id=b.dataset.sel; selected.has(id)?selected.delete(id):selected.add(id); showObjekt(); });
+  // Tipp auf „unvollst.“: fehlende Pflichtangaben dieser Messung der Reihe nach abfragen
+  document.querySelectorAll('.item[data-del="messung"] .tag.warn').forEach(tg=>tg.addEventListener('click', e=>{
+    e.stopPropagation(); e.preventDefault();
+    const m=ms.find(x=>x.id===(tg.closest('[data-id]')||{dataset:{}}).dataset.id); if(m) pflichtAbfrage(m);
+  }));
   document.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{
     const id=b.dataset.open;
     if(selectMode){ selected.has(id)?selected.delete(id):selected.add(id); showObjekt(); return; }
@@ -1889,7 +1894,7 @@ async function showStep(){
       <button class="link-btn" id="backBtn" ${step===0?'disabled':''} aria-label="Zurück zu ${esc(step>0?STEPS[step-1].q:'')}">${backIcon()}<span>${esc(step>0?STEPS[step-1].q:'')}</span></button>
       <button class="link-btn right" id="skipBtn"><span>Überspringen</span>${skipIcon()}</button>
     </div>
-    <button class="btn primary" id="nextBtn">${einzelEdit?(naechsteInKategorie()>=0?'Weiter':'Speichern'):last?({termin:'Fertig', objekt:'Fertig', messung:'Übersicht'})[kind]:'Weiter'}</button></div></div>`;
+    <button class="btn primary" id="nextBtn">${einzelEdit?(naechsteInKategorie()>=0||(abfrage&&einzelEdit===abfrageWeiter&&abfrageNoch())?'Weiter':abfrage&&einzelEdit===abfrageWeiter?'Fertig':'Speichern'):last?({termin:'Fertig', objekt:'Fertig', messung:'Übersicht'})[kind]:'Weiter'}</button></div></div>`;
   bindStep(s);
   window.scrollTo(0,0);
   if(!s.images){ const first=document.querySelector('.inp'); if(first && !('ontouchstart' in window)) first.focus(); }
@@ -1913,6 +1918,49 @@ function naechsteInKategorie(){
   const ST=stepsOf(kind), k=stepKat(ST[step]);
   for(let j=step+1;j<ST.length;j++){ if(stepKat(ST[j])===k) return j; if(ST[j].sec!==ST[step].sec && kind!=='objekt') break; }
   return -1;
+}
+// Fehlende Pflichtangaben einer Messung (inkl. der Angaben von Messtermin und Messobjekt, die für sie gelten) nacheinander abfragen
+let abfrage=null;
+function abfrageZiel(key, m){
+  const TK=['name','datum','messleiter','windgeschwindigkeit','systeme'];
+  let rec, kd;
+  if(TK.includes(key)){ rec=termin; kd='termin'; }
+  else if(key==='messobjekt'||key==='zweck'||key==='erregung'||/^sys:/.test(key)){ rec=objekt; kd='objekt'; }
+  else { rec=m; kd='messung'; }
+  const ST = kd==='termin' ? TERMIN_STEPS : kd==='objekt' ? (()=>{ const c=cur,k=kind; cur=rec; kind='objekt'; try{ return objektSteps(); } finally{ cur=c; kind=k; } })() : (()=>{ const c=cur,k=kind; cur=rec; kind='messung'; try{ return messungSteps(); } finally{ cur=c; kind=k; } })();
+  let i=-1;
+  if(/^sys:/.test(key)){
+    const [,id,was]=key.split(':'), pt=!!SYS_CFG[id].sensorText;
+    const part = was==='ort' ? 2 : was==='sens' ? (pt?3:2) : 3;
+    i=ST.findIndex(x=>x.sys===id && x.part===part); if(i<0) i=ST.findIndex(x=>x.sys===id && x.part===3);
+  } else i=ST.findIndex(x=>(x.fields||[]).some(f=>f.k===key));
+  if(i<0 && key==='erregung') i=OBJEKT_STEPS.length;
+  return i<0 ? null : {rec, kind:kd, step:i};
+}
+function abfrageNoch(){
+  const A=abfrage; if(!A) return false;
+  const fehlt=pflichtFehlendKeys(termin.data, objekt.data, A.m.data).map(x=>x.k);
+  for(let j=A.i;j<A.keys.length;j++){ const k=A.keys[j]; if(!fehlt.includes(k)) continue; const z=abfrageZiel(k,A.m); if(z && !A.gesehen.has(z.kind+':'+z.step)) return true; }
+  return false;
+}
+async function abfrageWeiter(){
+  const A=abfrage; if(!A) return;
+  const m=A.m;
+  while(A.i<A.keys.length){
+    const k=A.keys[A.i++];
+    if(!pflichtFehlendKeys(termin.data, objekt.data, m.data).some(x=>x.k===k)) continue; // inzwischen ausgefüllt
+    const z=abfrageZiel(k, m); if(!z) continue;
+    const id=z.kind+':'+z.step; if(A.gesehen.has(id)) continue; A.gesehen.add(id);
+    cur=z.rec; kind=z.kind; objektKontext=true; nurSeite=true; einzelEdit=abfrageWeiter; step=z.step;
+    return showStep();
+  }
+  abfrage=null; nurSeite=false; einzelEdit=null; sitzung=null; offeneMessung=m.id; cur=null; showObjekt();
+}
+async function pflichtAbfrage(m){
+  const keys=pflichtFehlendKeys(termin.data, objekt.data, m.data).map(x=>x.k);
+  if(!keys.length) return;
+  abfrage={m, keys, i:0, gesehen:new Set()};
+  await abfrageWeiter();
 }
 function finishWizard(){ sitzung=null; einzelEdit=null; saveCur().then(()=> kind==='termin' ? (imObjekt() ? showObjekt() : showTermin()) : kind==='objekt' ? showObjekt() : showReview()); }
 
@@ -2151,7 +2199,7 @@ function genauNorm(t){
   const bsp='z. B. 16 g oder 60 m/s²';
   if(!u) return {fehler:'Einheit fehlt ('+bsp+')'};
   if(/^(g|erdbeschleunigung)$/.test(u)) return {text:'±'+z+'·g'};
-  if(/^(m\/?s\^?2|m\/s²|ms²|m\/s\*\*2|m·s\^?-2|m\/s2)$/.test(u)) return {text:'±'+z+' [m/s²]'};
+  if(/^(ms|m\/?s\^?2|m\/s²|ms²|m\/s\*\*2|m·s\^?-2|m\/s2)$/.test(u)) return {text:'±'+z+' [m/s²]'};
   return {fehler:'Einheit „'+roh+'“ nicht erkannt ('+bsp+')'};
 }
 function genauAnz(v){ v=String(v==null?'':v); const n=genauNorm(v); return n && n.text ? n.text : v; }
