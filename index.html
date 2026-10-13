@@ -536,7 +536,7 @@ const xAktualisieren=()=>{ document.querySelectorAll('#app .xwrap > .inp').forEa
   document.querySelectorAll('#app .unitwrap').forEach(w=>{ const i=w.querySelector('.inp'); if(!i) return; const u=w.querySelector('.uv'); if(u) u.textContent=i.value; w.classList.toggle('ue', /\d/.test(i.value) && !/[A-Za-zÄÖÜäöüß]/.test(i.value)); }); };
 // Felder mit fester Einheit (außer Impulshammer): nur Zahlen (Ziffern, Komma, Minus) zulassen
 document.addEventListener('input', e=>{ const el=e.target; if(el && el.dataset && el.dataset.num){ if(el.dataset.unb){ const q=el.value.replace(/[„“”"]/g,''); if(/^[A-Za-z]+$/.test(q) && 'unbekannt'.startsWith(q.toLowerCase())) return; } const v=el.value.replace(/\./g,',').replace(/[^\d,\-]/g,''); if(v!==el.value) el.value=v; } }, true);
-document.addEventListener('change', e=>{ const el=e.target; if(el && el.dataset && el.dataset.unb && /^[„“"]?[A-Za-z]+[“”"]?$/.test(el.value)){ el.value = el.value.replace(/[„“”"]/g,'').toLowerCase()==='unbekannt' ? '„unbekannt“' : ''; el.dispatchEvent(new Event('input',{bubbles:true})); } }, true);
+document.addEventListener('change', e=>{ const el=e.target; if(el && el.dataset && el.dataset.unb){ const n=aaNorm(el.value); if(n && n.text!=null && n.text!==el.value){ el.value=n.text; el.dispatchEvent(new Event('input',{bubbles:true})); } else if(n && n.fehler!=null){ el.value=''; el.dispatchEvent(new Event('input',{bubbles:true})); } if(el.closest('.unitwrap')){ const w=el.closest('.unitwrap'), u=w.querySelector('.uv'); if(u) u.textContent=el.value; w.classList.toggle('ue', /\d/.test(el.value) && !/[A-Za-zÄÖÜäöüß]/.test(el.value)); } } }, true);
 document.addEventListener('input', xAktualisieren);
 // Läutefrequenz / Windgeschwindigkeit: Info live zeigen, beim Verlassen des Feldes Schreibweise vereinheitlichen und Zahlenwert/Einheit speichern
 document.addEventListener('input', e=>{ const el=e.target; const art=el&&el.dataset?parseArt(el.dataset.k):''; if(art){ infoSetzen(document.querySelector(`[data-frqinfo="${el.dataset.k}"]`), el.value, art); } });
@@ -564,8 +564,8 @@ const SYSTEME_BASIS = [
 const SYSTEME = SYSTEME_BASIS.slice();   // Basissysteme + selbst angelegte (settings.custom), siehe syncSysteme()
 // Gerätedaten pro Messsystem: landen im Bericht unter „Messgeräte“
 const SYS_DEFAULTS = {
-  ni:      {geraetetyp:'National Instruments', sensortyp:'', messgenauigkeit:'', aafilter:'', abtastrate:'25600 [Hz] (1/(0,039[ms]))', sensoren:'71, 72, 73, 74, 75, 76'},
-  arduino: {geraetetyp:'Arduino MKR ZERO', sensortyp:'MPU 6050', messgenauigkeit:'±4·g', aafilter:'„unbekannt“', abtastrate:'200 [Hz] (1/(0,005[s]))', sensoren:'01, 02, 03'},
+  ni:      {geraetetyp:'NI-9234', sensortyp:'', messgenauigkeit:'', aafilter:'11,52 [kHz]', abtastrate:'25600 [Hz] (1/(0,039[ms]))', sensoren:'71, 72, 73, 74, 75, 76'},
+  arduino: {geraetetyp:'Arduino MKR ZERO', sensortyp:'MPU 6050', messgenauigkeit:'±4·g', aafilter:'94', abtastrate:'200 [Hz] (1/(0,005[s]))', sensoren:'01, 02, 03'},
   phyphox: {geraetetyp:'Phyphox (Smartphone-App)', sensortyp:'', messgenauigkeit:'„unbekannt“', aafilter:'„unbekannt“', abtastrate:'100 [Hz] (1/(0,01[s]))', sensor:'iPhone13,1, (26.6.1)'}
 };
 const DEFAULTS = { firma:'TU München', messleiter:'Clemens Koller' };
@@ -580,14 +580,17 @@ function loadSettings(){
     if(st.sys) for(const k in st.sys) s.sys[k] = Object.assign(s.sys[k]||{}, st.sys[k]||{});
     // Noch nie eingetragene Abtastrate der Messsysteme übernimmt die neue Voreinstellung
     // Anti-Aliasing-Filter: nur Zahl in Hz (früherer Text wie „94 Hz (Tiefpassfilter)“ → 94)
-    Object.values(s.sys).forEach(r=>{ if(r && typeof r.aafilter==='string' && !/unbekannt/i.test(r.aafilter) && !/^[\d.,\s-]*$/.test(r.aafilter)){ const m=/[-+]?\d+(?:[.,]\d+)?/.exec(r.aafilter); r.aafilter=m?m[0].replace('.',','):''; } });
+    Object.values(s.sys).forEach(r=>{ if(r && typeof r.aafilter==='string' && !/unbekannt|khz/i.test(r.aafilter) && !/^[\d.,\s-]*$/.test(r.aafilter)){ const m=/[-+]?\d+(?:[.,]\d+)?/.exec(r.aafilter); r.aafilter=m?m[0].replace('.',','):''; } });
     Object.values(s.sys).forEach(r=>{ if(r && typeof r.geraetetyp==='string') r.geraetetyp=r.geraetetyp.replace(/\s*\n\s*/g,', '); });
     ['ni','arduino','phyphox'].forEach(id=>{ const r=s.sys[id]; if(r && (!String(r.abtastrate||'').trim() || (id==='ni' && /^25600 Hz \(1\/0,0(000390625s|390625ms)\)$/.test(r.abtastrate)))) r.abtastrate=SYS_DEFAULTS[id].abtastrate; });
     Object.values(s.sys).forEach(r=>{ if(r) ['aafilter','messgenauigkeit'].forEach(k=>{ if(/^[„“"]?unbekannt[“”"]?$/i.test(String(r[k]||'').trim())) r[k]='„unbekannt“'; }); });
     if(s.sys.arduino && String(s.sys.arduino.geraetetyp||'').trim()==='Arduino') s.sys.arduino.geraetetyp=SYS_DEFAULTS.arduino.geraetetyp; // nur Einstellungen
+    // National Instruments: Gerätetyp NI-9234 und Grenzfrequenz 11520 Hz als Voreinstellung (nur Einstellungen, bestehende Termine bleiben unverändert)
+    if(s.sys.ni){ if(String(s.sys.ni.geraetetyp||'').trim()==='National Instruments') s.sys.ni.geraetetyp=SYS_DEFAULTS.ni.geraetetyp; if(!String(s.sys.ni.aafilter||'').trim() || String(s.sys.ni.aafilter).trim()==='11520') s.sys.ni.aafilter=SYS_DEFAULTS.ni.aafilter; }
     // Phyphox: noch nicht eingetragene Messgenauigkeit übernimmt die Voreinstellung (nur Einstellungen, bestehende Termine bleiben unverändert)
     if(s.sys.phyphox && !String(s.sys.phyphox.messgenauigkeit||'').trim()) s.sys.phyphox.messgenauigkeit=SYS_DEFAULTS.phyphox.messgenauigkeit;
     ['phyphox','arduino'].forEach(id=>{ if(s.sys[id] && !String(s.sys[id].aafilter||'').trim()) s.sys[id].aafilter=SYS_DEFAULTS[id].aafilter; });
+    if(s.sys.arduino && /^„unbekannt“$/.test(String(s.sys.arduino.aafilter||'').trim())) s.sys.arduino.aafilter=SYS_DEFAULTS.arduino.aafilter; // nur Einstellungen: bisheriger Standard „unbekannt“ → 94 Hz
     // Frühere Arduino-Voreinstellungen aus der Word-Vorlage entfernen, sofern unverändert gespeichert
     const alt = {geraetetyp:'MPU 6050 – Beschleunigungssensor ±4g\nArduino, MKR ZERO - Mikrocontroller', aafilter:'94 Hz (Tiefpassfilter)', abtastrate:'200 Hz (1/0.005s)'};
     for(const k in alt) if(s.sys.arduino[k]===alt[k]) s.sys.arduino[k]=SYS_DEFAULTS.arduino[k];
@@ -1834,7 +1837,7 @@ function fieldHTML(f, single){
     /* nur Auswahl per Antippen */
   } else {
     const t = f.type==='date'?'date':f.type==='time'?'time':'text';
-    if(f.unit) h += `<div class="unitwrap${/\d/.test(v)&&!/[A-Za-zÄÖÜäöüß]/.test(v)?' ue':''}"><span class="unit" aria-hidden="true"><span class="uv">${esc(v)}</span> [${esc(f.unit)}]</span><input class="inp uinp" id="${id}" type="text" data-k="${f.k}" value="${esc(v)}" placeholder="${esc(f.ph||'')}" ${f.unitText?'':'data-num="1" '+(/_aafilter$/.test(f.k)?'data-unb="1"':'inputmode="decimal"')} enterkeyhint="next" autocomplete="off"></div>`;
+    if(f.unit) h += `<div class="unitwrap${/\d/.test(v)&&!/[A-Za-zÄÖÜäöüß]/.test(v)?' ue':''}"><span class="unit" aria-hidden="true"><span class="uv">${esc(v)}</span> [${esc(f.unit)}]</span><input class="inp uinp" id="${id}" type="text" data-k="${f.k}" value="${esc(v)}" placeholder="${esc(f.ph||'')}" ${f.unitText?'':(/_aafilter$/.test(f.k)?'data-unb="1"':'data-num="1" inputmode="decimal"')} enterkeyhint="next" autocomplete="off"></div>`;
     else h += `<input class="inp" id="${id}" type="${t}" data-k="${f.k}" ${f.parse&&f.parse!=='abtast'&&f.parse!=='genau'?`data-art="${f.parse}"`:''} value="${esc(f.parse?klammer(v,f.parse):v)}" placeholder="${esc(f.ph||'')}" ${f.mode?`inputmode="${f.mode}"`:''} ${f.pad?`data-pad="${f.pad}"`:''} enterkeyhint="next" autocomplete="off">`;
   }
   if(f.rename){
@@ -2202,6 +2205,15 @@ function genauNorm(t){
   if(/^(ms|m\/?s\^?2|m\/s²|ms²|m\/s\*\*2|m·s\^?-2|m\/s2)$/.test(u)) return {text:'±'+z+' [m/s²]'};
   return {fehler:'Einheit „'+roh+'“ nicht erkannt ('+bsp+')'};
 }
+// Anti-Aliasing-Filter: nur Zahl (= Hz) oder Zahl mit kHz → „11,52 [kHz]“; „unbekannt“ erlaubt
+function aaNorm(t){
+  t=String(t==null?'':t).trim(); if(!t) return null;
+  if(/^[„“\"]?unbekannt[“”\"]?\.?$/i.test(t)) return {text:'„unbekannt“'};
+  const m=/^([\d.,]+)\s*(?:\[?\s*(k?hz|kilohertz|hertz)\s*\]?)?$/i.exec(t);
+  if(!m) return {fehler:/\d/.test(t) ? 'Einheit nicht erkannt (Hz oder kHz)' : ''};
+  const z=m[1].replace('.',','), u=(m[2]||'').toLowerCase();
+  return {text: /^k/.test(u) ? z+' [kHz]' : z};
+}
 function genauAnz(v){ v=String(v==null?'':v); const n=genauNorm(v); return n && n.text ? n.text : v; }
 function genauBericht(v){ return String(v||'').replace(/\s*\[(.*?)\]/g,' $1'); }
 function showSettings(){
@@ -2217,7 +2229,7 @@ function showSettings(){
       <div class="field"><label for="s_${x.id}_r">AD-Wandlung</label>${inp('s_'+x.id+'_r',abtastAnz(settings.sys[x.id].abtastrate))}<p class="muted small" id="s_${x.id}_rinfo" style="margin:8px 0 0"></p></div>
       ${SYS_CFG[x.id].sensorText ? `<div class="field"><label for="s_${x.id}_s">Sensor</label>${inp('s_'+x.id+'_s',sensorDefault(x.id))}</div>` : `<div class="field"><label for="s_${x.id}_t">Sensor</label>${inp('s_'+x.id+'_t',settings.sys[x.id].sensortyp||'')}</div>`}
       <div class="field"><label for="s_${x.id}_m">Messgenauigkeit</label>${inp('s_'+x.id+'_m',genauAnz(settings.sys[x.id].messgenauigkeit||''))}<p class="muted small" id="s_${x.id}_minfo" style="margin:8px 0 0"></p></div>
-      <div class="field"><label for="s_${x.id}_a">Anti-Aliasing-Filter</label>${(()=>{ const v=String(settings.sys[x.id].aafilter||''); return `<div class="unitwrap${/\d/.test(v)&&!/[A-Za-zÄÖÜäöüß]/.test(v)?' ue':''}"><span class="unit" aria-hidden="true"><span class="uv">${esc(v)}</span> [Hz]</span><input class="inp uinp" id="s_${x.id}_a" type="text" data-num="1" data-unb="1" value="${esc(v)}" placeholder="Grenzfrequenz [Hz]" autocomplete="off"></div>`; })()}</div>
+      <div class="field"><label for="s_${x.id}_a">Anti-Aliasing-Filter</label>${(()=>{ const v=String(settings.sys[x.id].aafilter||''); return `<div class="unitwrap${/\d/.test(v)&&!/[A-Za-zÄÖÜäöüß]/.test(v)?' ue':''}"><span class="unit" aria-hidden="true"><span class="uv">${esc(v)}</span> [Hz]</span><input class="inp uinp" id="s_${x.id}_a" type="text" data-unb="1" value="${esc(v)}" placeholder="Grenzfrequenz [Hz] oder [kHz]" autocomplete="off"></div>`; })()}</div>
       ${SYS_CFG[x.id].sensorText ? '' : `<div class="field"><label for="s_${x.id}_s">Sensornummern</label>${inp('s_'+x.id+'_s',sensorListe(x.id).join(', '))}</div>`}
       ${x.custom?'':`<button class="btn" id="reset_${x.id}" data-resetsys="${x.id}">Auf Vorlage zurücksetzen</button>`}
       ${x.custom?`<button class="del-link" data-delsys="${x.id}">${trashIcon()}<span>Messsystem löschen</span></button>`:''}</details>`).join('')}
@@ -2341,7 +2353,7 @@ function geraeteFelder(t, d, o){
   const mehr = gew.length>1;
   const liste = (k,u) => gew.map(x=>[x.name, mitEinheit(((v)=>k==='messgenauigkeit'?genauAnz(v):v)(String(val(o,'sys_'+x.id+'_'+(k==='abtastrate'?'abtast':k==='messgenauigkeit'?'genau':k), k==='messgenauigkeit'?genauVon(sysRec(x.id,t),x.id):sysRec(x.id,t)[k])||'').trim()), u)]).filter(p=>p[1])
     .map(([n,v])=> mehr ? n+': '+v : v).join('\n');
-  return { geraetetyp: gew.map(x=>String(val(o,'sys_'+x.id+'_geraetetyp',sysRec(x.id,t).geraetetyp)||x.name).trim()).join('\n'), aafilter: liste('aafilter','Hz'), abtastrate: abtastBericht(liste('abtastrate')), messgenauigkeit: genauBericht(liste('messgenauigkeit')), sensortyp: liste('sensortyp') };
+  return { geraetetyp: gew.map(x=>String(val(o,'sys_'+x.id+'_geraetetyp',sysRec(x.id,t).geraetetyp)||x.name).trim()).join('\n'), aafilter: genauBericht(liste('aafilter','Hz')), abtastrate: abtastBericht(liste('abtastrate')), messgenauigkeit: genauBericht(liste('messgenauigkeit')), sensortyp: liste('sensortyp') };
 }
 // Art der Anregung, bei Personen mit der gewählten Bewegung
 function erregungText(o,d){
