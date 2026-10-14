@@ -571,7 +571,7 @@ const SYSTEME_BASIS = [
 const SYSTEME = SYSTEME_BASIS.slice();   // Basissysteme + selbst angelegte (settings.custom), siehe syncSysteme()
 // Gerätedaten pro Messsystem: landen im Bericht unter „Messgeräte“
 const SYS_DEFAULTS = {
-  ni:      {geraetetyp:'NI-9234, NI cDAQ-9174', sensortyp:'', messgenauigkeit:'', aafilter:'11,52 [kHz]', abtastrate:'25600 [Hz] (1/(0,039[ms]))', sensoren:'71, 72, 73, 74, 75, 76'},
+  ni:      {geraetetyp:'NI-9234, NI cDAQ-9174', sensortyp:'PCB 352A24', messgenauigkeit:'±50·g', aafilter:'11,52 [kHz]', abtastrate:'25600 [Hz] (1/(0,039[ms]))', sensoren:'71, 72, 73, 74, 75, 76'},
   arduino: {geraetetyp:'MKR Zero', sensortyp:'MPU 6050', messgenauigkeit:'±4·g', aafilter:'94', abtastrate:'200 [Hz] (1/(0,005[s]))', sensoren:'01, 02, 03'},
   phyphox: {geraetetyp:'(Smartphone-App)', sensortyp:'', messgenauigkeit:'„unbekannt“', aafilter:'„unbekannt“', abtastrate:'100 [Hz] (1/(0,01[s]))', sensor:'iPhone13,1, (26.6.1)'}
 };
@@ -588,6 +588,8 @@ function loadSettings(){
     // Noch nie eingetragene Abtastrate der Messsysteme übernimmt die neue Voreinstellung
     // Anti-Aliasing-Filter: nur Zahl in Hz (früherer Text wie „94 Hz (Tiefpassfilter)“ → 94)
     Object.values(s.sys).forEach(r=>{ if(r && typeof r.aafilter==='string' && !/unbekannt|khz/i.test(r.aafilter) && !/^[\d.,\s-]*$/.test(r.aafilter)){ const m=/[-+]?\d+(?:[.,]\d+)?/.exec(r.aafilter); r.aafilter=m?m[0].replace('.',','):''; } });
+    if(s.sys.ni && !String(s.sys.ni.messgenauigkeit||'').trim()) s.sys.ni.messgenauigkeit=SYS_DEFAULTS.ni.messgenauigkeit; // nur Einstellungen für neue Termine
+    if(s.sys.ni && (!String(s.sys.ni.sensortyp||'').trim() || s.sys.ni.sensortyp==='Model 352A24')) s.sys.ni.sensortyp=SYS_DEFAULTS.ni.sensortyp; // nur Einstellungen für neue Termine
     Object.values(s.sys).forEach(r=>{ if(r && typeof r.geraetetyp==='string') r.geraetetyp=r.geraetetyp.replace(/\s*\n\s*/g,', '); });
     ['ni','arduino','phyphox'].forEach(id=>{ const r=s.sys[id]; if(r && (!String(r.abtastrate||'').trim() || (id==='ni' && /^25600 Hz \(1\/0,0(000390625s|390625ms)\)$/.test(r.abtastrate)))) r.abtastrate=SYS_DEFAULTS[id].abtastrate; });
     Object.values(s.sys).forEach(r=>{ if(r) ['aafilter','messgenauigkeit'].forEach(k=>{ if(/^[„“"]?unbekannt[“”"]?$/i.test(String(r[k]||'').trim())) r[k]='„unbekannt“'; }); });
