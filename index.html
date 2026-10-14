@@ -300,6 +300,7 @@ summary.nav-sum .st:active{background:var(--line)}
 .mdetail h4.sub{border-top:1px solid var(--line); padding-top:12px; margin-top:6px}
 .list .mdetail{border-bottom:0}
 .rv.nolinie{border-bottom:0; padding-bottom:4px}
+.rv:has(+ .rv[data-kat="Skizze und Fotos"]){border-bottom:0}
 [data-frqinfo]:empty, [id$="_rinfo"]:empty, [id$="_minfo"]:empty{display:none}
 .rv.nolinie + .rv{padding-top:4px}
 .rv .k{min-width:0; -webkit-hyphens:auto; hyphens:auto; overflow-wrap:break-word}
@@ -619,7 +620,8 @@ const TERMIN_STEPS = [
 ];
 // Messobjekt innerhalb eines Termins
 const OBJEKT_STEPS = [
-  {sec:'Messobjekt', q:'Messobjekt', fields:[{k:'messobjekt', type:'text', ph:'oder frei eingeben', chips:['Gewindestange','Stahlseil','Stahlstab'], recent:true}, {k:'bauteil_linear', label:'Lineares Bauteil', type:'switch'}, {k:'geschoss', label:'Geschoss', ph:'optional', type:'text', chips:['1. UG','EG','1. OG','2. OG','DG'], gleich:true}, {k:'bauteil', label:'Bauteil', ph:'optional', type:'text'}, {k:'achse', label:'Achse', ph:'optional', type:'text'}]},
+  {sec:'Messobjekt', q:'Messobjekt', fields:[{k:'messobjekt', type:'text', ph:'oder frei eingeben', chips:['Gewindestange','Stahlseil','Stahlstab'], recent:true}, {k:'bauteil_linear', label:'Lineares Bauteil', type:'switch'}, ...[1,2,3].map(n=>({k:'feld_l'+n, label:'Länge Feld '+n+' [m]', type:'text', mode:'decimal', imBild:true, skizze:n===1, nurLinear:true}))]},
+  {sec:'Messobjekt', q:'Lage des Messobjekts', fields:[{k:'geschoss', label:'Geschoss', ph:'optional', type:'text', chips:['1. UG','EG','1. OG','2. OG','DG'], gleich:true}, {k:'bauteil', label:'Bauteil', ph:'optional', type:'text', recent:true}, {k:'achse', label:'Achse', ph:'optional', type:'text'}]},
   {sec:'Messobjekt', q:'Zweck der Messung', fields:[{k:'zweck', type:'textarea', ph:'oder frei eingeben', toggle:true, chips:['Zugkraftermittlung','Eigenfrequenzanalyse','Amplitudenmessung'], stack:true, recent:true}]}
 ];
 // Beim Termin gewählte Messsysteme (in fester Reihenfolge)
@@ -725,7 +727,7 @@ function systemSeiten(x, o){
 }
 function objektSteps(){
   const o = objekt ? objekt.data : {};
-  return OBJEKT_STEPS.concat(OBJEKT_TAIL, ...systemeVon(termin&&termin.data).map(x=>systemSeiten(x,o)));
+  return OBJEKT_STEPS.concat([OBJEKT_TAIL[0]], ...systemeVon(termin&&termin.data).map(x=>systemSeiten(x,o)), [OBJEKT_TAIL[1]]);
 }
 const stepIndex = (sys, part) => { const st=objektSteps(); const i=st.findIndex(s=>s.sys===sys && s.part===part); return i>=0 ? i : st.findIndex(s=>s.sys===sys && s.part===3); };
 // Messdauer und Sensorstandorte für Bericht und Übersichten zusammensetzen
@@ -840,11 +842,10 @@ function dateiFormat(v){ let d=String(v||'').replace(/\D/g,'').replace(/^0+/,'')
 const mitZugkraft = o => String((o&&o.zweck)||'').includes('Zugkraftermittlung');
 function ersteSeite(){
   const zug = mitZugkraft(objekt&&objekt.data);
-  const notiz = {k:'mess_notizen', label:'Beschreibung der Auflager', zeigLabel:true, type:'textarea', ph:'oder frei eingeben', toggle:true, chips:['„gelenkig“','„eingespannt“','Grundstab II','Grundstab III','Grundstab IV'], gruppen:[['„gelenkig“','„eingespannt“'],['Grundstab II','Grundstab III','Grundstab IV']], vorschau:true};
-  const lang = [1,2,3].map(n=>({k:'feld_l'+n, label:'Länge Feld '+n+' [m]', type:'text', mode:'decimal', imBild:true}));
+  const notiz = {k:'mess_notizen', label:'Beschreibung der Auflager', zeigLabel:true, type:'textarea', ph:'oder frei eingeben', toggle:true, chips:['„gelenkig“','„eingespannt“','Grundstab II','Grundstab III','Grundstab IV'], gruppen:[['„gelenkig“','„eingespannt“'],['Grundstab II','Grundstab III','Grundstab IV']]};
   // Systembeschreibung (Grundstab …) nur bei linearem Bauteil; Zugkraft wie bisher bei Zugkraftermittlung
   const linear = istLinear(objekt&&objekt.data);
-  const felder = (zug ? [{k:'zugkraft', label:'Zugkraft', type:'text', mode:'decimal', unit:'kN', ph:'Zugkraft [kN]'}] : []).concat(linear ? [notiz].concat(lang) : []);
+  const felder = (zug ? [{k:'zugkraft', label:'Zugkraft', type:'text', mode:'decimal', unit:'kN', ph:'Zugkraft [kN]'}] : []).concat(linear ? [notiz] : []);
   return felder.length ? {sec:'Messung', q: 'System', fields: felder} : null;
 }
 // Glocken: nach der Anzahl folgt je Glocke eine eigene Seite (Masse, Läutefrequenz)
@@ -1094,7 +1095,6 @@ function pflichtFehlendKeys(t, o, d){
     if(!sens.length){ add('sys:'+x.id+':sens', x.name+': Sensor'); continue; }
     if(sens.some(nr=>leer(posWert(o,ortKey(x.id,nr))))) add('sys:'+x.id+':ort', x.name+': Sensorstandort');
   }
-  if(mitZugkraft(o) && leer(d.zugkraft)) add('zugkraft','Zugkraft');
   if(istLinear(o) && leer(d.mess_notizen)) add('mess_notizen','Beschreibung der Auflager');
   if(erregungenVon(o).includes('Impulshammer')){
     if(leer(d.hammer_typ)) add('hammer_typ','Impulshammer');
@@ -1268,41 +1268,81 @@ $('#camIn').onchange = onFiles; $('#libIn').onchange = onFiles;
 let DREIFELD_C=null;
 let DREIFELD_POS=null;
 // Träger mit n Feldern (1–3) zeichnen; werte = Feldlängen als Text (nur beim Export), sonst nur Maßlinie
-function zeichneTraeger(n, werte){
-  const W=1200,H=werte?330:400,c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
+function zeichneTraeger(n, werte, idx, sens){
+  const rows = werte ? (sens||[]).length : 0;
+  const W=1200,H=werte ? (rows ? 427+rows*80 : 370) : 440,c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
   g.fillStyle='#fff'; g.fillRect(0,0,W,H); g.strokeStyle='#000'; g.fillStyle='#000'; g.lineCap='round'; g.lineJoin='round';
-  const y=110, ue=70, m=16, x0=m, a=m+ue, rel = n===3?[0.8,1,0.8]:n===2?[1,1]:[1], tot=rel.reduce((p,q)=>p+q,0), L=(W-2*(m+ue))/tot;
+  const y=130, ue=70, m=16, x0=m, a=m+ue, rel = n===3?[0.8,1,0.8]:n===2?[1,1]:[1], tot=rel.reduce((p,q)=>p+q,0), L=(W-2*(m+ue))/tot;
   const xs=[a]; rel.forEach(r=>xs.push(xs[xs.length-1]+r*L)); const x1=W-m, e=xs.length-1;   // Randfelder beim Dreifeldträger = 80 % des Innenfeldes
-  g.lineWidth=14; g.setLineDash([]); g.beginPath(); g.moveTo(xs[0],y); g.lineTo(xs[e],y); g.stroke();
+  // idx = ursprüngliche Feldnummern (1–3) der gezeichneten Felder; Festlager am Anfang von Feld 2 (bzw. 3), sonst links
+  const ix = idx || [1,2,3].slice(0,n), pf = ix.findIndex(v=>v>=2), festI = pf>=0 ? pf : 0;
+  const gnd=y+70, yd=y+112;
+  // Position eines Sensors auf dem Träger (ab Festlager; m über Maßstab des Feldes am Festlager, ξ als Anteil der Feldlänge)
+  const num=v=>parseFloat(String(v).replace(',','.')), xa=xs[festI], fpx=xs[festI+1]-xs[festI], fm=werte ? num(werte[festI]) : NaN;
+  const pxm = fm>0 ? fpx/fm : (()=>{ const t=(werte||[]).map(num).filter(v=>v>0); return t.length ? (xs[e]-xs[0])/t.reduce((p,q)=>p+q,0) : 80; })();
+  const sensX = sn => { const zv=num(sn.z); const x = sn.e==='l' ? xa+zv*fpx : xa+zv*pxm; return Math.max(xa+20,Math.min(W-m,x)); };
+  // Zeichenreihenfolge (hinten → vorne): 1 Sensorsymbol, 2 Achsen mit Beschriftung (Text weiß unterlegt), 3 Systemskizze und Maßlinien
+  // 1) Sensor-Symbol: am Sensor, der am nächsten bei ξ = 0,5 liegt, sonst bei ξ = 2/3 des mittleren Feldes (beim Dreifeldträger Feld 2)
+  const pm = ix.indexOf(2), fi = pm>=0 ? pm : 0, sx=(sens&&sens.length&&werte) ? sensX(sens.reduce((b,q)=>Math.abs((sensX(q)-xa)/fpx-0.5)<Math.abs((sensX(b)-xa)/fpx-0.5)?q:b)) : xs[fi]+(xs[fi+1]-xs[fi])*2/3, cy=y-80; g.lineWidth=4.5; g.lineCap='round';
+  g.beginPath(); g.arc(sx,cy,12,0,Math.PI*2); g.fill();
+  g.beginPath(); g.moveTo(sx,cy+23); g.lineTo(sx,y-6); g.stroke();
+  [26,41].forEach(rr=>{ g.beginPath(); g.arc(sx,cy,rr,-0.87,0.87); g.stroke(); g.beginPath(); g.arc(sx,cy,rr,Math.PI-0.87,Math.PI+0.87); g.stroke(); });
+  // 2) Achsen
+  const achsText=(t,x,yy)=>{ g.font='italic 600 34px Arial, Helvetica, sans-serif'; g.textBaseline='middle'; g.textAlign='left'; const w=g.measureText(t).width;
+    g.fillStyle='#fff'; g.fillRect(x-6,yy-22,w+12,44); g.fillStyle='#000'; g.fillText(t,x,yy); };
+  { const ox=xs[festI], oy=y-28, la=56; g.lineWidth=4; g.lineCap='round'; g.setLineDash([]);   // x-Koordinate: Ursprung x = 0 am Festlager
+    g.beginPath(); g.moveTo(ox,oy); g.lineTo(ox+la,oy); g.moveTo(ox,oy-11); g.lineTo(ox,oy+11); g.stroke();
+    g.beginPath(); g.moveTo(ox+la+4,oy); g.lineTo(ox+la-10,oy-8); g.lineTo(ox+la-10,oy+8); g.closePath(); g.fill();
+    achsText('x, ξ',ox+la+14,oy+2); }
+  { const zx=xs[festI], z0=yd+38, z1=yd+104; g.lineWidth=4; g.lineCap='round'; g.setLineDash([]);   // z-Achse unterhalb des Festlagers
+    g.beginPath(); g.moveTo(zx,z0); g.lineTo(zx,z1-4); g.stroke();
+    g.beginPath(); g.moveTo(zx,z1+4); g.lineTo(zx-8,z1-10); g.lineTo(zx+8,z1-10); g.closePath(); g.fill();
+    achsText('z',zx+16,z1-6); }
+  // 3) Systemskizze: Träger, Überstände (gestrichelt), Lager, Maßlinie der Felder
+  g.fillStyle='#000'; g.lineWidth=14; g.setLineDash([]); g.beginPath(); g.moveTo(xs[0],y); g.lineTo(xs[e],y); g.stroke();
   g.lineCap='butt'; g.setLineDash([14,16]); g.beginPath(); g.moveTo(x0,y); g.lineTo(xs[0],y); g.moveTo(xs[e],y); g.lineTo(x1,y); g.stroke();
   g.lineCap='round'; g.setLineDash([]); g.lineWidth=6;
-  const gnd=y+70, hatch=x=>{ g.beginPath(); g.moveTo(x-48,gnd); g.lineTo(x+48,gnd); g.stroke(); for(let i=-48;i<48;i+=12){ g.beginPath(); g.moveTo(x+i+12,gnd); g.lineTo(x+i,gnd+14); g.stroke(); } };
-  // festes Lager: erstes Innenlager (beim Einfeldträger links); alle anderen horizontal verschieblich
-  const festI = e>=2 ? 1 : 0;
+  const hatch=x=>{ g.beginPath(); g.moveTo(x-48,gnd); g.lineTo(x+48,gnd); g.stroke(); for(let i=-48;i<48;i+=12){ g.beginPath(); g.moveTo(x+i+12,gnd); g.lineTo(x+i,gnd+14); g.stroke(); } };
+  // festes Lager am Anfang von Feld 2 (bzw. 3, sonst links); alle anderen horizontal verschieblich
   xs.forEach((x,i)=>{
     if(i===festI){ g.beginPath(); g.moveTo(x,y+6); g.lineTo(x-34,gnd); g.lineTo(x+34,gnd); g.closePath(); g.stroke(); }
     else { g.beginPath(); g.moveTo(x,y+6); g.lineTo(x-32,y+60); g.lineTo(x+32,y+60); g.closePath(); g.stroke(); }
     hatch(x); });
-  // Maßlinie unter den Feldern
-  const yd=y+112; g.lineWidth=4;
+  g.lineWidth=4;
   xs.forEach(x=>{ g.beginPath(); g.moveTo(x,gnd+22); g.lineTo(x,yd+14); g.stroke(); g.beginPath(); g.moveTo(x-11,yd+11); g.lineTo(x+11,yd-11); g.stroke(); });
   g.beginPath(); g.moveTo(xs[0],yd); g.lineTo(xs[e],yd); g.stroke();
-  if(werte){ g.font='600 40px Arial, Helvetica, sans-serif'; g.textAlign='center'; g.textBaseline='top';
-    werte.forEach((w,i)=>g.fillText(w+' m',(xs[i]+xs[i+1])/2,yd+24)); }
-  // Sensor-Symbol bei 1/3 der Länge des mittleren Feldes (beim Dreifeldträger Feld 2, sonst Feld 1), ab linkem Lager
-  const fi = e===3?1:0, sx=xs[fi]+(xs[fi+1]-xs[fi])/3, cy=y-48; g.lineWidth=4.5; g.lineCap='round';
-  g.beginPath(); g.arc(sx,cy,12,0,Math.PI*2); g.fill();
-  g.beginPath(); g.moveTo(sx,cy+23); g.lineTo(sx,y-6); g.stroke();
-  [26,41].forEach(rr=>{ g.beginPath(); g.arc(sx,cy,rr,-0.87,0.87); g.stroke(); g.beginPath(); g.arc(sx,cy,rr,Math.PI-0.87,Math.PI+0.87); g.stroke(); });
+  if(werte){ g.font='600 40px Arial, Helvetica, sans-serif'; g.textAlign='center'; g.textBaseline='bottom';
+    werte.forEach((w,i)=>g.fillText(w+' m',(xs[i]+xs[i+1])/2,yd-12)); }
+  // Maßlinien der Sensorlage, immer ab Festlager (x = 0): je Sensor bis zum Sensor und weiter bis zum rechten Lager des mittleren Feldes
+  if(werte && rows){
+    const midI = ix.indexOf(2)>=0 ? ix.indexOf(2) : 0, refOK = midI===festI, xr = xa+fpx;
+    let ry=yd+185; g.lineWidth=4; g.lineCap='round'; g.setLineDash([]); g.font='600 30px Arial, Helvetica, sans-serif'; g.textAlign='center';
+    const tick=x=>{ g.beginPath(); g.moveTo(x,ry-16); g.lineTo(x,ry+16); g.moveTo(x-11,ry+11); g.lineTo(x+11,ry-11); g.stroke(); };   // senkrechter Strich + 45°-Strich
+    const fmt=v=>(Math.round(v*100)/100).toString().replace('.',',');
+    const zeile=(pts,texts,name)=>{ g.beginPath(); g.moveTo(pts[0],ry); g.lineTo(pts[pts.length-1],ry); g.stroke(); pts.forEach(tick);
+      g.textBaseline='bottom'; texts.forEach((t,k)=>{ if(t) g.fillText(t,(pts[k]+pts[k+1])/2,ry-12); });
+      if(name){ g.textAlign='right'; g.textBaseline='middle'; g.fillText(name,xa-24,ry); g.textAlign='center'; } ry+=80; };
+    (sens||[]).forEach(sn=>{ const zv=num(sn.z), kl=sn.e==='l'; const xb = sensX(sn);
+      const rest = kl ? 1-zv : fm-zv, pts=[xa,xb], tx=[sn.text];
+      if(refOK && xr>xb+30 && rest>0){ pts.push(xr); tx.push(fmt(rest)+(kl?' [-]':' [m]')); }
+      zeile(pts,tx,sn.name); });
+  }
+  g.fillStyle='#000'; g.font='italic 400 28px Arial, Helvetica, sans-serif'; g.textAlign='right'; g.textBaseline='alphabetic'; g.fillText('Skizze nicht maßstäblich',W-m-6,H-14);
   if(!werte) DREIFELD_POS={mx:[0,1,2].map(i=>((xs[i]+xs[i+1])/2)/W*100), top:(yd+16)/H*100};
   return c;
 }
 function dreifeldCanvas(){ return DREIFELD_C || (DREIFELD_C=zeichneTraeger(3,null)); }
 // Für den Word-Export: Skizze mit so vielen Feldern, wie Längen eingetragen sind (nichts, wenn keine)
-async function traegerBild(d){
-  const w=[1,2,3].map(n=>String((d||{})['feld_l'+n]||'').trim()).filter(Boolean);
+// Sensorlagen eines Objekts (je Sensor Position wie eingegeben: l [m] oder ξ [-])
+function sensorLagen(o, t){
+  const out=[]; for(const x of systemeVon(t)) for(const nr of sensorenVon(x.id,o,t)){ const k=ortKey(x.id,nr), z=String(o[k+'_z']==null?'':o[k+'_z']).trim(); if(!z) continue;
+    const e=o[k+'_e'] || (/ m$/.test(o[k]||'') ? 'm' : 'l'); out.push({name: SYS_CFG[x.id].sensorText ? 'Ph' : x.id==='arduino' ? 'A'+nr : nr, text: normDez(z)+(e==='l'?' [-]':' [m]'), z, e}); }
+  return out;
+}
+async function traegerBild(d, t){
+  const ix=[1,2,3].filter(n=>String((d||{})['feld_l'+n]||'').trim()), w=ix.map(n=>String(d['feld_l'+n]).trim());
   if(!w.length) return null;
-  const c=zeichneTraeger(w.length,w); const bl=await new Promise(r=>c.toBlob(r,'image/jpeg',0.95));
+  const c=zeichneTraeger(w.length,w,ix,sensorLagen(d,t)); const bl=await new Promise(r=>c.toBlob(r,'image/jpeg',0.95));
   return {bytes:new Uint8Array(await bl.arrayBuffer()), width:c.width, height:c.height, caption:''};
 }
 function dreifeldBild(){ return new Promise(r=>dreifeldCanvas().toBlob(r,'image/jpeg',0.92)); }
@@ -1700,10 +1740,9 @@ const zuListen = new Set();
 function objektZeilen(o, oImgs, sysListe, fehl){
   fehl = fehl || new Set();
   return [['Messobjekt', o.messobjekt, 0], ['Zweck der Messung', o.zweck, 1]]
-    .map(([l,v,i])=>`<button class="rv ${fehl.has(['messobjekt','zweck'][i])?'fehlt':''} ${i===1?'nolinie':''} ${i===0?'nolinie':''}" data-kat="${i===0?'Messobjekt':'Zweck und Anregung'}" data-ostep="${i}"><span class="k">${l}</span><span class="v">${v?esc(v):(fehl.has(['messobjekt','zweck'][i])?'fehlt':'–')}</span></button>${i===0?`<button class="rv" data-kat="Messobjekt" data-ostep="0"><span class="k">Lineares Bauteil</span><span class="v">${istLinear(o)?'ja':'nein'}</span></button>`:''}`+(i===0?[['Geschoss','geschoss'],['Bauteil','bauteil'],['Achse','achse']].map(([l,k])=>`<button class="rv nolinie" data-kat="Messobjekt" data-ostep="0"><span class="k">${l}</span><span class="v">${String(o[k]||'').trim()?esc(o[k]):'–'}</span></button>`).join(''):'')).join('')
+    .map(([l,v,i])=>`<button class="rv ${fehl.has(['messobjekt','zweck'][i])?'fehlt':''} ${i===1?'nolinie':''} ${i===0?'nolinie':''}" data-kat="${i===0?'Messobjekt':'Zweck und Anregung'}" data-ostep="${i===1?2:i}"><span class="k">${l}</span><span class="v">${v?esc(v):(fehl.has(['messobjekt','zweck'][i])?'fehlt':'–')}</span></button>${i===0?`<button class="rv ${istLinear(o)?'nolinie':''}" data-kat="Messobjekt" data-ostep="0"><span class="k">Lineares Bauteil</span><span class="v">${istLinear(o)?'ja':'nein'}</span></button>`:''}`+(i===0&&istLinear(o)?`<button class="rv" data-kat="Messobjekt" data-ostep="0"><span class="k">Feldlängen</span><span class="v">${[1,2,3].some(n=>String(o['feld_l'+n]||'').trim())?[1,2,3].map(n=>(String(o['feld_l'+n]||'').trim()?mitEinheit(String(o['feld_l'+n]).trim(),'m'):'–')).join('; '):'–'}</span></button>`:'')+(i===0?[['Geschoss','geschoss'],['Bauteil','bauteil'],['Achse','achse']].map(([l,k])=>`<button class="rv ${k==='achse'?'':'nolinie'}" data-kat="Messobjekt" data-ostep="1"><span class="k">${l}</span><span class="v">${String(o[k]||'').trim()?esc(o[k]):'–'}</span></button>`).join(''):'')).join('')
     + `
-      <button class="rv ${fehl.has('erregung')?'fehlt':''}" data-kat="Zweck und Anregung" data-ostep="${OBJEKT_STEPS.length}"><span class="k">Art der Anregung</span><span class="v">${o.erregung?esc(o.erregung):(fehl.has('erregung')?'fehlt':'–')}</span></button>
-      <button class="rv" data-kat="Skizze und Fotos" data-ostep="${OBJEKT_STEPS.length+1}"><span class="k">Skizze und Fotos</span><span class="v">${oImgs.length?oImgs.length+' Bild'+(oImgs.length>1?'er':''):'–'}</span></button>`
+      <button class="rv ${fehl.has('erregung')?'fehlt':''}" data-kat="Zweck und Anregung" data-ostep="${OBJEKT_STEPS.length}"><span class="k">Art der Anregung</span><span class="v">${o.erregung?esc(o.erregung):(fehl.has('erregung')?'fehlt':'–')}</span></button>`
     + `<h4 class="sub mit-linie">Messsysteme</h4>` + (sysListe.length
       ? sysListe.map(x=>{
           const sens=sensorenVon(x.id,o), du=val(o,'sys_'+x.id+'_dauer',SYS_CFG[x.id].dauer.def), pt=SYS_CFG[x.id].sensorText;
@@ -1721,7 +1760,8 @@ function objektZeilen(o, oImgs, sysListe, fehl){
           if(!pt && !sens.length) zeilen.push(['Sensoren', 'keine', 2, fehl.has('sys:'+x.id+':sens')]);
           if(sens.length) zeilen.push(['Sensorstandort', sens.map(nr=>(pt?'':nr+': ')+(posWert(o,ortKey(x.id,nr))||'–')).join('\n'), 2, fehl.has('sys:'+x.id+':ort')]);
           return zeilen.map(([l,v,part,f],i)=>`<button class="rv ${f?'fehlt':''} ${i<zeilen.length-1?'nolinie':''}" data-kat="Messsysteme" data-ostep="${stepIndex(x.id,part)}"><span class="k">${esc(l)}</span><span class="v">${esc(v)||'–'}</span></button>`).join(''); }).join('')
-      : `<p class="muted small">Beim Messtermin sind keine Messsysteme ausgewählt.</p>`);
+      : `<p class="muted small">Beim Messtermin sind keine Messsysteme ausgewählt.</p>`)
+    + `<button class="rv" data-kat="Skizze und Fotos" data-ostep="${objektSteps().length-1}" style="border-top:1px solid var(--line)"><span class="k">Skizze und Fotos</span><span class="v">${oImgs.length?oImgs.length+' Bild'+(oImgs.length>1?'er':''):'–'}</span></button>`;
 }
 
 
@@ -1863,15 +1903,17 @@ function recentValues(k){
   const pool = ({termin:termine, objekt:objekte, messung:messungen})[kind];
   const seen=[]; for(const m of pool.slice().sort((a,b)=>(b.updated||0)-(a.updated||0))){ const v=String(m.data[k]||'').trim(); if(v && !seen.includes(v) && m.id!==cur.id) seen.push(v); if(seen.length>=4) break; } return seen;
 }
+function skizzeBlock(){
+  const ci=dreifeldCanvas(), P=DREIFELD_POS, d=cur.data;
+  return `<div class="field" data-nurlinear style="${istLinear(d)?'':'display:none'}"><label>System</label><div class="dreifeld" style="position:relative; margin-top:6px"><img data-vorschau="skizze" src="${ci.toDataURL('image/jpeg',0.92)}" alt="Träger" style="display:block; width:100%; background:#fff">`
+    + [1,2,3].map(n=>`<input class="inp dflen" id="f_feld_l${n}" data-k="feld_l${n}" inputmode="decimal" placeholder="l [m]" aria-label="Länge Feld ${n} [m]" value="${esc(d['feld_l'+n]||'')}" autocomplete="off" style="position:absolute; left:${P.mx[n-1]}%; top:${P.top}%; width:24%; transform:translateX(-50%); text-align:center; padding:6px 4px; min-height:0; height:auto">`).join('')+`</div></div>`;
+}
 function fieldHTML(f, single){
-  if(f.imBild) return '';
+  if(f.imBild) return f.skizze ? skizzeBlock() : '';
   const v = cur.data[f.k]==null?'':cur.data[f.k];
   const id = 'f_'+f.k;
   if(f.type==='switch') return `<div class="field"><div class="chips stack noic"><label class="chip schalter-zeile" for="${id}"><span>${esc(f.label)}</span><input type="checkbox" class="ios-switch" id="${id}" data-switch="${f.k}" ${cur.data[f.k]!=='0'?'checked':''}></label></div></div>`;
   let vor='';
-  if(f.vorschau){ const ci=dreifeldCanvas(), P=DREIFELD_POS;
-    vor = `<div class="dreifeld" style="position:relative; margin:0 0 18px"><img data-vorschau="${f.k}" src="${ci.toDataURL('image/jpeg',0.92)}" alt="Dreifeldträger" style="display:block; width:100%; background:#fff">`
-      + [1,2,3].map(n=>`<input class="inp dflen" id="f_feld_l${n}" data-k="feld_l${n}" inputmode="decimal" placeholder="l [m]" aria-label="Länge Feld ${n} [m]" value="${esc(cur.data['feld_l'+n]||'')}" autocomplete="off" style="position:absolute; left:${P.mx[n-1]}%; top:${P.top}%; width:24%; transform:translateX(-50%); text-align:center; padding:6px 4px; min-height:0; height:auto">`).join('')+`</div>`; }
   let h = `<div class="field" ${f.nurLinear?`data-nurlinear style="${istLinear(cur.data)?'':'display:none'}"`:''}>${((!single||f.zeigLabel) && f.label)?`<label for="${id}">${esc(f.label)}</label>`:''}`;
   if(f.type==='compass'){
     h += `<div class="compass">${COMPASS.map(([s,l])=>{ const val = s==='–'?'windstill':`${l} (${s})`; return `<button class="chip ${v===val?'on':''}" data-set="${f.k}" data-val="${esc(val)}">${s==='–'?'still':s}</button>`; }).join('')}</div>
@@ -1898,7 +1940,7 @@ function fieldHTML(f, single){
     h += `<div class="chips stack noic">${f.chips.map(c=>`<div class="chip srow ${parts.includes(c)?'on':''}" role="button" data-tog="${f.k}" data-val="${esc(c)}"><span>Sensor</span><input class="sname" data-sid="${f.rename}" data-alt="${esc(c)}" value="${esc(c)}" inputmode="numeric" autocomplete="off" aria-label="Bezeichnung Sensor ${esc(c)}"></div>`).join('')}</div>`;
   } else if(f.chips){
     const parts = String(v).split(',').map(s=>s.trim());
-    h += (f.gruppen||[f.chips]).map(grp=>`<div class="chips ${f.stack?'stack':''} ${f.stack&&!f.icons?'noic':''} ${f.gleich?'gleich':''} ${f.gruppen?'gleich3':''}" ${f.gleich?`style="--gn:${f.chips.length}"`:''}>${grp.map(c=>`<button class="chip ${(f.toggle?parts.includes(c):v===c)?'on':''} ${!f.stack && String(c).length===1?'rund':''}" ${/^Grundstab/.test(c)?`data-grund="1" ${einfeldTraeger(cur.data)||parts.includes(c)?'':'disabled'}`:''} data-${f.toggle?'tog':'set'}="${f.k}" data-val="${esc(c)}">${f.icons&&f.icons[c]?`<span class="chip-ic">${sysIcon(f.icons[c])}</span>`:''}<span>${esc(f.chipLabel?f.chipLabel(c):f.parse?klammer(c,f.parse):c)}</span></button>`).join('')}</div>`).join('');
+    h += (f.gruppen||[f.chips]).map(grp=>`<div class="chips ${f.stack?'stack':''} ${f.stack&&!f.icons?'noic':''} ${f.gleich?'gleich':''} ${f.gruppen?'gleich3':''}" ${f.gleich?`style="--gn:${f.chips.length}"`:''}>${grp.map(c=>`<button class="chip ${(f.toggle?parts.includes(c):v===c)?'on':''} ${!f.stack && String(c).length===1?'rund':''}" ${/^Grundstab/.test(c)?`data-grund="1" ${einfeldTraeger(objekt&&objekt.data)||parts.includes(c)?'':'disabled'}`:''} data-${f.toggle?'tog':'set'}="${f.k}" data-val="${esc(c)}">${f.icons&&f.icons[c]?`<span class="chip-ic">${sysIcon(f.icons[c])}</span>`:''}<span>${esc(f.chipLabel?f.chipLabel(c):f.parse?klammer(c,f.parse):c)}</span></button>`).join('')}</div>`).join('');
   }
 
   if(f.parse) h += `<p class="muted small" data-frqinfo="${f.k}" style="margin:8px 0 0${wertFehlt(v,f.parse)?'; color:var(--danger)':''}">${esc(wertInfo(v,f.parse))}</p>`;
@@ -1927,7 +1969,10 @@ async function showStep(){
   let body;
   if(s.images){
     const imgs = await imgsOf(cur.id);
-    body = `<p class="muted small">Skizze mit x-/y-Richtung, Untergrund und Abständen zu aufgehenden Bauteilen. Alles hier landet auf Seite 2 des Berichts.</p>
+    const tix=[1,2,3].filter(n=>String((objekt&&objekt.data['feld_l'+n])||'').trim()), tw=tix.map(n=>String(objekt.data['feld_l'+n]).trim());
+    const tsens = objekt ? sensorLagen(objekt.data, termin&&termin.data) : [];
+    const tbild = (objekt && istLinear(objekt.data) && tw.length) ? `<img src="${zeichneTraeger(tw.length,tw,tix,tsens).toDataURL('image/jpeg',0.92)}" alt="System" style="display:block; width:100%; margin:0 0 6px; background:#fff">` : '';
+    body = tbild + `
       <div class="row"><button class="btn steel" id="drawBtn">Skizze zeichnen</button><button class="btn steel" id="camBtn">Foto aufnehmen</button></div>
       <button class="btn" id="libBtn" style="margin-top:10px">Aus Mediathek wählen</button>
       <div class="thumbs">${imgs.map((im,i)=>`<div class="thumb"><img data-img="${im.id}" alt="Bild ${i+1}">
@@ -2161,7 +2206,7 @@ function gleicheBreite(){
   if(w>0) cs.forEach(c=>c.style.width=Math.ceil(w)+'px');
 }
 function grundstabSperre(){
-  const frei=einfeldTraeger(cur&&cur.data);
+  const frei=einfeldTraeger(objekt&&objekt.data);
   document.querySelectorAll('.chip[data-grund]').forEach(b=>{ b.disabled = !(frei || b.classList.contains('on')); });
 }
 function syncChips(k){
@@ -2404,7 +2449,7 @@ function reportFields(m){
     datum:[fmtDate(t.datum), d.uhrzeit?d.uhrzeit+' Uhr':''].filter(Boolean).join('\n'),
     windgeschwindigkeit:t.windgeschwindigkeit, windrichtung:t.windrichtung, temperatur:fmtTemp(t.temperatur),
     firma:t.firma, messleiter:t.messleiter,
-    zweck:o.zweck, messobjekt:[o.messobjekt, [['Geschoss',o.geschoss],['Bauteil',o.bauteil],['Achse',o.achse]].filter(p=>String(p[1]||'').trim()).map(p=>p[0]+': '+String(p[1]).trim()).join('; '), o.objekt_notizen, d.mess_notizen, [1,2,3].some(n=>String(d['feld_l'+n]||'').trim()) ? 'Feldlängen: '+[1,2,3].map(n=>mitEinheit(String(d['feld_l'+n]||'').trim()||'–','m')).join('; ') : '', zugkraftText(d.zugkraft)?'Zugkraft: '+zugkraftText(d.zugkraft):''].filter(x=>String(x||'').trim()).join('\n'), ...geraeteFelder(t,d,o),
+    zweck:o.zweck, messobjekt:[o.messobjekt, [['Geschoss',o.geschoss],['Bauteil',o.bauteil],['Achse',o.achse]].filter(p=>String(p[1]||'').trim()).map(p=>p[0]+': '+String(p[1]).trim()).join('; '), o.objekt_notizen, d.mess_notizen, istLinear(o) && [1,2,3].some(n=>String(o['feld_l'+n]||'').trim()) ? 'Feldlängen: '+[1,2,3].map(n=>(String(o['feld_l'+n]||'').trim()?mitEinheit(String(o['feld_l'+n]).trim(),'m'):'–')).join('; ') : '', zugkraftText(d.zugkraft)?'Zugkraft: '+zugkraftText(d.zugkraft):''].filter(x=>String(x||'').trim()).join('\n'), ...geraeteFelder(t,d,o),
     ...sensorFelder(t,o,d), erregung:erregungText(o,d),
     ergaenzungen: lines([['Personenanzahl',d.personen],['Gewicht',mitEinheit(d.gewicht,'kg')],['Erkennbare Quellen',d.amb_quellen],
       ['Impulshammer-Produkt',d.hammer_produkt],['Impulshammer',mitEinheit(d.hammer_typ,'g')],['Hammerspitze',d.hammer_spitze],['Anschlagrichtung',d.hammer_richtung],
@@ -2441,7 +2486,7 @@ function fileName(m){ const d=m.data, t=terminOf(m), o=objektOf(m); return (safe
 async function buildDocx(m){
   if(!TEMPLATE_BYTES) TEMPLATE_BYTES=b64ToBytes(TEMPLATE_B64);
   const images=[];
-  if(istLinear(objektOf(m))){ const tb=await traegerBild(m.data); if(tb) images.push(tb); }
+  if(istLinear(objektOf(m))){ const tb=await traegerBild(objektOf(m), terminOf(m)); if(tb) images.push(tb); }
   for(const im of (await imgsOf(m.oid)).concat(await imgsOf(m.id))) images.push({bytes:new Uint8Array(await im.blob.arrayBuffer()), width:im.w, height:im.h, caption:im.caption});
   const zip = await buildReportDocx(JSZip, TEMPLATE_BYTES, reportFields(m), images);
   return zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document', compression:'DEFLATE'});
