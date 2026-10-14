@@ -475,6 +475,9 @@ function imageParagraph(rid, idx, wPx, hPx, caption) {
 async function buildReportDocx(JSZipLib, templateBytes, fields, images) {
   const zip = await JSZipLib.loadAsync(templateBytes);
   let doc = await zip.file('word/document.xml').async('string');
+  doc = doc.replace('<w:t>(subjektive Beobachtungen)</w:t>', '<w:t></w:t>');
+  // Nordpfeil (Absatz mit dem Vorlagenbild) auf Seite 2 entfernen
+  doc = doc.replace(/<w:p[ >](?:(?!<w:p[ >])[\s\S])*?r:embed="rId5"[\s\S]*?<\/w:p>/, '');
   // Reihenfolge im Bericht: Gerätetyp, Abtastrate, Sensor, Messgenauigkeit, Anti-Aliasing-Filter, Messdauer
   // (Zeilen „Sensor“ und „Messgenauigkeit“ gibt es in der Vorlage nicht, sie werden nur eingefügt, wenn ausgefüllt)
   { const zeile = lab => new RegExp('<w:tr[ >](?:(?!<\\/w:tr>)[\\s\\S])*?'+lab+'[\\s\\S]*?<\\/w:tr>');
@@ -1564,6 +1567,11 @@ async function newMessung(){
     if(String(prev.data[k]||'').trim()){ d[k]=prev.data[k]; carried.push(k); }
     ['_z','_e'].forEach(s=>{ if(prev.data[k+s]!==undefined) d[k+s]=prev.data[k+s]; });
   });
+  // Neues Messobjekt: Beschreibung (der Auflager) aus der zuletzt eingegebenen Messung desselben Messtermins vorschlagen
+  if(!prev){
+    const vorher = messungen.filter(m=>m.tid===objekt.tid && String((m.data||{}).mess_notizen||'').trim()).sort((x,y)=>(y.created||0)-(x.created||0))[0];
+    if(vorher){ d.mess_notizen=vorher.data.mess_notizen; carried.push('mess_notizen'); }
+  }
   cur = { id:uid(), tid:objekt.tid, oid:objekt.id, created:Date.now(), updated:Date.now(), data:d, carried };
   await put('messungen', cur); neueIds.add(cur.id);
   kind='messung'; step=0; showStep();
@@ -2482,14 +2490,106 @@ function arduinoDateien(t,o,d){
   if(!systemeVon(t).some(x=>x.id==='arduino')) return [];
   return sensorenVon('arduino',o,t).map(nr=>{ const f=padNr(d['ard_datei_'+nr],4); return f ? nr+'-'+f : ''; }).filter(Boolean);
 }
+
+/* ---------- PDF-Export (gleicher Inhalt wie Word, ohne Zusatzdienst) ---------- */
+// Seite A4 (595 × 842 pt), Rand 36 pt wie im Word; Text wird auf Leinwände gezeichnet und als JPEG-Seiten in ein PDF gepackt
+async function buildPdf(zip, images){
+  const PW=595, PH=842, M=36, S=3, TW=530;
+  const doc = new DOMParser().parseFromString(await zip.file('word/document.xml').async('string'), 'application/xml');
+  const kids = (el, tag)=>Array.from(el.childNodes).filter(n=>n.nodeName===tag);
+  const attr = (el, tag, a)=>{ const n=el.getElementsByTagName(tag)[0]; return n ? n.getAttribute(a||'w:val') : null; };
+  const pages=[]; let cv, g, y;
+  const neueSeite = ()=>{ cv=document.createElement('canvas'); cv.width=PW*S; cv.height=PH*S; g=cv.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,cv.width,cv.height); g.scale(S,S); g.textBaseline='alphabetic'; y=M; pages.push(cv); };
+  const font = (b,sz)=> (b?'bold ':'')+sz+'px Arial, Helvetica, sans-serif';
+  // Text in Zeilen umbrechen (Leerzeichen am Anfang bleiben erhalten)
+  const umbruch = (zeile, w, b, sz)=>{
+    g.font=font(b,sz); const out=[]; let cur='';
+    const teile = zeile.split(/(?<= )/);
+    for(let t of teile){
+      if(g.measureText(cur+t.replace(/ +$/,'')).width<=w || !cur.trim()){ cur+=t; }
+      else { out.push(cur.replace(/ +$/,'')); cur=t; }
+      while(g.measureText(cur).width>w && cur.length>1){ let k=cur.length-1; while(k>1 && g.measureText(cur.slice(0,k)).width>w) k--; out.push(cur.slice(0,k)); cur=cur.slice(k); }
+    }
+    out.push(cur.replace(/ +$/,'')); return out;
+  };
+  const zeilenVon = el=>{ const L=['']; let erstes=true;
+    const walk = n=>{ for(const c of Array.from(n.childNodes)){
+      if(c.nodeName==='w:drawing') continue;
+      if(c.nodeName==='w:p'){ if(!erstes) L.push(''); erstes=false; walk(c); }
+      else if(c.nodeName==='w:br') L.push('');
+      else if(c.nodeName==='w:t') L[L.length-1]+=c.textContent;
+      else walk(c); } };
+    walk(el); return L; };
+  const LH=13.2, PAD=5.4;
+  const body = doc.getElementsByTagName('w:body')[0];
+  // Titel
+  neueSeite();
+  g.fillStyle='#000'; g.font=font(true,14); g.fillText('Messbericht', M, y+13);
+  g.fillRect(M, y+15, g.measureText('Messbericht').width, 0.9); y+=14+10+8;
+  const tbl = doc.getElementsByTagName('w:tbl')[0];
+  const grid = Array.from(tbl.getElementsByTagName('w:gridCol')).map(c=>+c.getAttribute('w:w')/20);
+  for(const tr of kids(tbl,'w:tr')){
+    const minH = +(attr(tr,'w:trHeight')||283)/20;
+    let x=M, ci=0; const cells=[]; let h=minH;
+    for(const tc of kids(tr,'w:tc')){
+      const span=+(attr(tc,'w:gridSpan')||1), w=grid.slice(ci,ci+span).reduce((a,b)=>a+b,0)||TW;
+      const fett = tc.getElementsByTagName('w:b').length>0, fill=attr(tc,'w:shd','w:fill');
+      const lines=[]; zeilenVon(tc).forEach(l=>umbruch(l,w-2*PAD,fett,11).forEach(u=>lines.push(u)));
+      while(lines.length && lines[lines.length-1]==='' && lines.length>1) lines.pop();
+      h=Math.max(h, lines.length*LH+7);
+      cells.push({x,w,fett,fill,lines}); x+=w; ci+=span;
+    }
+    if(y+h>PH-M){ neueSeite(); }
+    for(const c of cells){
+      if(c.fill && c.fill!=='auto'){ g.fillStyle='#'+c.fill; g.fillRect(c.x,y,c.w,h); }
+      g.strokeStyle='#000'; g.lineWidth=0.5; g.strokeRect(c.x,y,c.w,h);
+      g.fillStyle='#000'; g.font=font(c.fett,11);
+      c.lines.forEach((l,i)=>g.fillText(l, c.x+PAD, y+3.5+11+i*LH));
+    }
+    y+=h;
+  }
+  // Seite 2: Skizze und Fotos
+  neueSeite();
+  g.fillStyle='#000'; g.font=font(true,14); g.fillText('Skizze', M, y+13); g.fillRect(M, y+15, g.measureText('Skizze').width, 0.9); y+=14+3;
+  g.font=font(false,11); g.fillText('(x-, y-Richtung, Untergrund und ungefähre Abstände zu Aufgehenden Bauteilen)', M, y+11); y+=11+12;
+  const bmp = async bytes=>{ const b=await createImageBitmap(new Blob([bytes])); return b; };
+  const maxW=10466/20, maxH=8.6*72;
+  for(const im of (images||[])){
+    const b=await bmp(im.bytes);
+    let w=maxW, h=w*im.height/im.width; if(h>maxH){ h=maxH; w=h*im.width/im.height; }
+    const cap = im.caption ? umbruch(String(im.caption), maxW, false, 11) : [];
+    if(y+h+6+cap.length*LH>PH-M){ neueSeite(); }
+    y+=6; g.drawImage(b, M+(maxW-w)/2, y, w, h); y+=h;
+    g.fillStyle='#000'; g.font=font(false,11); g.textAlign='center';
+    cap.forEach(l=>{ y+=LH; g.fillText(l, M+maxW/2, y-2.5); }); g.textAlign='left'; y+=8;
+  }
+  // PDF zusammensetzen
+  const enc=new TextEncoder(), parts=[], offs=[]; let len=0;
+  const add = d=>{ const u = typeof d==='string' ? enc.encode(d) : d; parts.push(u); len+=u.length; };
+  const obj = (n, head, stream)=>{ offs[n]=len; add(n+' 0 obj\n'+head); if(stream){ add('\nstream\n'); add(stream); add('\nendstream'); } add('\nendobj\n'); };
+  const jp=[]; for(const c of pages){ const bl=await new Promise(r=>c.toBlob(r,'image/jpeg',0.88)); jp.push(new Uint8Array(await bl.arrayBuffer())); }
+  const n=pages.length;
+  add('%PDF-1.4\n');
+  obj(1,'<< /Type /Catalog /Pages 2 0 R >>');
+  obj(2,'<< /Type /Pages /Kids ['+pages.map((_,i)=>(3+i*3)+' 0 R').join(' ')+'] /Count '+n+' >>');
+  pages.forEach((c,i)=>{ const p=3+i*3, cs=enc.encode('q '+PW+' 0 0 '+PH+' 0 0 cm /Im0 Do Q');
+    obj(p,'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+PW+' '+PH+'] /Resources << /XObject << /Im0 '+(p+1)+' 0 R >> >> /Contents '+(p+2)+' 0 R >>');
+    obj(p+1,'<< /Type /XObject /Subtype /Image /Width '+c.width+' /Height '+c.height+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+jp[i].length+' >>', jp[i]);
+    obj(p+2,'<< /Length '+cs.length+' >>', cs); });
+  const total=3+n*3, xr=len;
+  add('xref\n0 '+total+'\n0000000000 65535 f \n'+offs.slice(1,total).map(o=>String(o).padStart(10,'0')+' 00000 n \n').join('')+'trailer\n<< /Size '+total+' /Root 1 0 R >>\nstartxref\n'+xr+'\n%%EOF');
+  return new Blob(parts, {type:'application/pdf'});
+}
 function fileName(m){ const d=m.data, t=terminOf(m), o=objektOf(m); return (safeName(d.nummer)||'xx')+'-Messbericht'+(t.datum?'_'+t.datum:'')+(o.messobjekt?'_'+safeName(o.messobjekt):'')+'.docx'; }
-async function buildDocx(m){
+async function buildDocx(m, mitPdf){
   if(!TEMPLATE_BYTES) TEMPLATE_BYTES=b64ToBytes(TEMPLATE_B64);
   const images=[];
   if(istLinear(objektOf(m))){ const tb=await traegerBild(objektOf(m), terminOf(m)); if(tb) images.push(tb); }
   for(const im of (await imgsOf(m.oid)).concat(await imgsOf(m.id))) images.push({bytes:new Uint8Array(await im.blob.arrayBuffer()), width:im.w, height:im.h, caption:im.caption});
   const zip = await buildReportDocx(JSZip, TEMPLATE_BYTES, reportFields(m), images);
-  return zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document', compression:'DEFLATE'});
+  const blob = await zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document', compression:'DEFLATE'});
+  if(mitPdf) blob.pdf = await buildPdf(zip, images);
+  return blob;
 }
 // Kurze Rückfrage, wenn Berichte unvollständig sind (Pflichtangaben fehlen)
 function exportPruefen(ms){
@@ -2515,7 +2615,8 @@ async function exportZip(ms){
     const z=new JSZip(), used=new Set();
     for(let i=0;i<ms.length;i++){
       let n=fileName(ms[i]); while(used.has(n)) n=n.replace(/\.docx$/,'_2.docx'); used.add(n);
-      z.file(n, await buildDocx(ms[i]));
+      const bl=await buildDocx(ms[i], true);
+      z.file(n, bl); z.file(n.replace(/\.docx$/,'.pdf'), bl.pdf);
       const p=document.getElementById('zprog'); if(p) p.textContent=(i+1)+' von '+ms.length;
     }
     const blob=await z.generateAsync({type:'blob', mimeType:'application/zip'});
