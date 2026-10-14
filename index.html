@@ -1400,7 +1400,7 @@ async function showHome(){
     const namen = os.map(o=>o.data.messobjekt).filter(Boolean).join(', ');
     return `<li class="item swipe" data-del="termin" data-id="${t.id}"><div class="front"><button class="open" data-termin="${t.id}">
         <span class="main"><span class="title">${esc(t.data.name || (t.data.datum?fmtDate(t.data.datum):'Ohne Datum'))}</span>
-        <span class="meta">${metaHTML([t.data.name&&t.data.datum?fmtDate(t.data.datum):'', namen||'Noch kein Messobjekt'])}</span></span>
+        <span class="meta">${metaHTML([t.data.name&&t.data.datum?fmtDate(t.data.datum):''])}</span></span>
         ${terminUnvollst(t)?'<span class="tag warn" aria-label="unvollständig">unvollst.</span>':''}<span class="tag zahl" aria-label="${n} Messung${n===1?'':'en'}">${n}</span></button></div><button class="del-btn" tabindex="-1">Löschen</button></li>`;
   }).join('');
   $('#app').innerHTML = `<div class="wrap">
@@ -2598,7 +2598,10 @@ function exportPruefen(ms){
   const n=ms.filter(m=>pflichtFehlend(terminOf(m).data, objektOf(m).data, m.data).length).length;
   if(!n) return Promise.resolve(true);
   const titel = ms.length===1 ? 'Messbericht unvollständig' : n===ms.length ? 'Messberichte unvollständig' : 'Messberichte z. T. unvollständig';
-  return new Promise(res=>{ sheet(`<p style="margin:0; padding:16px; text-align:center"><b>${titel}</b></p>
+  // Konkret anzeigen, was fehlt (je Messung), damit nachvollziehbar ist, warum die Meldung kommt
+  const liste = ms.map(m=>({nr:m.data.nummer||'?', f:pflichtFehlend(terminOf(m).data, objektOf(m).data, m.data)})).filter(x=>x.f.length);
+  const zeilen = liste.slice(0,6).map(x=>`<div style="padding:2px 16px"><b>${esc(x.nr)}:</b> ${esc(x.f.join(', '))}</div>`).join('') + (liste.length>6 ? `<div class="muted small" style="padding:2px 16px">… und ${liste.length-6} weitere</div>` : '');
+  return new Promise(res=>{ sheet(`<p style="margin:0; padding:16px 16px 8px; text-align:center"><b>${titel}</b></p><div class="small" style="padding-bottom:12px">${zeilen}</div>
     <button class="btn primary" data-x="ok">Trotzdem erstellen</button>
     <button class="btn" data-x="close">Abbrechen</button>`, (x,close)=>{ close(); res(x==='ok'); }); });
 }
