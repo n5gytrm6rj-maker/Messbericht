@@ -176,6 +176,8 @@ input[type="date"].inp, input[type="time"].inp{-webkit-appearance:none; appearan
 input[type="date"].inp::-webkit-date-and-time-value, input[type="time"].inp::-webkit-date-and-time-value{text-align:left; margin:0; min-height:1.3em}
 .field{min-width:0; max-width:100%}
 body.kb .nav{display:none}
+.chips.gleich{gap:6px}
+.chips.gleich .chip{width:66px; padding-left:0; padding-right:0}
 .chips.stack{flex-direction:column; gap:0; background:var(--panel); border-radius:12px; overflow:hidden; margin-top:4px}
 .chips.stack .chip{position:relative; display:flex; align-items:center; gap:14px; width:100%; min-height:54px; padding:8px 16px; border:0; border-radius:0; background:none; color:var(--ink); font-size:17px; font-weight:400; text-align:left}
 .chips.stack .chip + .chip::before{content:""; position:absolute; top:0; left:60px; right:0; border-top:0.5px solid var(--line)}
@@ -412,6 +414,7 @@ html.sheet-ios .sheet{padding-bottom:max(20px, calc(8px + env(safe-area-inset-bo
 .item[data-del="messung"] .main{flex:1 1 auto}
 .meta .nb{white-space:nowrap}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+.chip:disabled{opacity:.35; pointer-events:none}
 </style>
 </head>
 <body>
@@ -564,9 +567,9 @@ const SYSTEME_BASIS = [
 const SYSTEME = SYSTEME_BASIS.slice();   // Basissysteme + selbst angelegte (settings.custom), siehe syncSysteme()
 // Gerätedaten pro Messsystem: landen im Bericht unter „Messgeräte“
 const SYS_DEFAULTS = {
-  ni:      {geraetetyp:'NI-9234', sensortyp:'', messgenauigkeit:'', aafilter:'11,52 [kHz]', abtastrate:'25600 [Hz] (1/(0,039[ms]))', sensoren:'71, 72, 73, 74, 75, 76'},
-  arduino: {geraetetyp:'Arduino MKR ZERO', sensortyp:'MPU 6050', messgenauigkeit:'±4·g', aafilter:'94', abtastrate:'200 [Hz] (1/(0,005[s]))', sensoren:'01, 02, 03'},
-  phyphox: {geraetetyp:'Phyphox (Smartphone-App)', sensortyp:'', messgenauigkeit:'„unbekannt“', aafilter:'„unbekannt“', abtastrate:'100 [Hz] (1/(0,01[s]))', sensor:'iPhone13,1, (26.6.1)'}
+  ni:      {geraetetyp:'NI-9234, NI cDAQ-9174', sensortyp:'', messgenauigkeit:'', aafilter:'11,52 [kHz]', abtastrate:'25600 [Hz] (1/(0,039[ms]))', sensoren:'71, 72, 73, 74, 75, 76'},
+  arduino: {geraetetyp:'MKR Zero', sensortyp:'MPU 6050', messgenauigkeit:'±4·g', aafilter:'94', abtastrate:'200 [Hz] (1/(0,005[s]))', sensoren:'01, 02, 03'},
+  phyphox: {geraetetyp:'(Smartphone-App)', sensortyp:'', messgenauigkeit:'„unbekannt“', aafilter:'„unbekannt“', abtastrate:'100 [Hz] (1/(0,01[s]))', sensor:'iPhone13,1, (26.6.1)'}
 };
 const DEFAULTS = { firma:'TU München', messleiter:'Clemens Koller' };
 function freshSettings(){ return Object.assign({}, DEFAULTS, {sys: JSON.parse(JSON.stringify(SYS_DEFAULTS)), custom:[]}); }
@@ -584,9 +587,10 @@ function loadSettings(){
     Object.values(s.sys).forEach(r=>{ if(r && typeof r.geraetetyp==='string') r.geraetetyp=r.geraetetyp.replace(/\s*\n\s*/g,', '); });
     ['ni','arduino','phyphox'].forEach(id=>{ const r=s.sys[id]; if(r && (!String(r.abtastrate||'').trim() || (id==='ni' && /^25600 Hz \(1\/0,0(000390625s|390625ms)\)$/.test(r.abtastrate)))) r.abtastrate=SYS_DEFAULTS[id].abtastrate; });
     Object.values(s.sys).forEach(r=>{ if(r) ['aafilter','messgenauigkeit'].forEach(k=>{ if(/^[„“"]?unbekannt[“”"]?$/i.test(String(r[k]||'').trim())) r[k]='„unbekannt“'; }); });
-    if(s.sys.arduino && String(s.sys.arduino.geraetetyp||'').trim()==='Arduino') s.sys.arduino.geraetetyp=SYS_DEFAULTS.arduino.geraetetyp; // nur Einstellungen
+    if(s.sys.arduino && ['Arduino','Arduino MKR ZERO'].includes(String(s.sys.arduino.geraetetyp||'').trim())) s.sys.arduino.geraetetyp=SYS_DEFAULTS.arduino.geraetetyp; // nur Einstellungen
     // National Instruments: Gerätetyp NI-9234 und Grenzfrequenz 11520 Hz als Voreinstellung (nur Einstellungen, bestehende Termine bleiben unverändert)
-    if(s.sys.ni){ if(String(s.sys.ni.geraetetyp||'').trim()==='National Instruments') s.sys.ni.geraetetyp=SYS_DEFAULTS.ni.geraetetyp; if(!String(s.sys.ni.aafilter||'').trim() || String(s.sys.ni.aafilter).trim()==='11520') s.sys.ni.aafilter=SYS_DEFAULTS.ni.aafilter; }
+    if(s.sys.ni){ if(['National Instruments','NI-9234'].includes(String(s.sys.ni.geraetetyp||'').trim())) s.sys.ni.geraetetyp=SYS_DEFAULTS.ni.geraetetyp; if(!String(s.sys.ni.aafilter||'').trim() || String(s.sys.ni.aafilter).trim()==='11520') s.sys.ni.aafilter=SYS_DEFAULTS.ni.aafilter; }
+    if(s.sys.phyphox && String(s.sys.phyphox.geraetetyp||'').trim()==='Phyphox (Smartphone-App)') s.sys.phyphox.geraetetyp=SYS_DEFAULTS.phyphox.geraetetyp; // nur Einstellungen
     // Phyphox: noch nicht eingetragene Messgenauigkeit übernimmt die Voreinstellung (nur Einstellungen, bestehende Termine bleiben unverändert)
     if(s.sys.phyphox && !String(s.sys.phyphox.messgenauigkeit||'').trim()) s.sys.phyphox.messgenauigkeit=SYS_DEFAULTS.phyphox.messgenauigkeit;
     ['phyphox','arduino'].forEach(id=>{ if(s.sys[id] && !String(s.sys[id].aafilter||'').trim()) s.sys[id].aafilter=SYS_DEFAULTS[id].aafilter; });
@@ -615,7 +619,7 @@ const TERMIN_STEPS = [
 ];
 // Messobjekt innerhalb eines Termins
 const OBJEKT_STEPS = [
-  {sec:'Messobjekt', q:'Messobjekt', fields:[{k:'messobjekt', type:'text', ph:'oder frei eingeben', chips:['Gewindestange','Stahlseil'], stack:true, recent:true}, {k:'bauteil_linear', label:'Lineares Bauteil', type:'switch'}]},
+  {sec:'Messobjekt', q:'Messobjekt', fields:[{k:'messobjekt', type:'text', ph:'oder frei eingeben', chips:['Gewindestange','Stahlseil','Stahlstab'], recent:true}, {k:'bauteil_linear', label:'Lineares Bauteil', type:'switch'}, {k:'geschoss', label:'Geschoss', ph:'optional', type:'text', chips:['1. UG','EG','1. OG','2. OG','DG'], gleich:true}, {k:'bauteil', label:'Bauteil', ph:'optional', type:'text'}, {k:'achse', label:'Achse', ph:'optional', type:'text'}]},
   {sec:'Messobjekt', q:'Zweck der Messung', fields:[{k:'zweck', type:'textarea', ph:'oder frei eingeben', toggle:true, chips:['Zugkraftermittlung','Eigenfrequenzanalyse','Amplitudenmessung'], stack:true, recent:true}]}
 ];
 // Beim Termin gewählte Messsysteme (in fester Reihenfolge)
@@ -836,10 +840,11 @@ function dateiFormat(v){ let d=String(v||'').replace(/\D/g,'').replace(/^0+/,'')
 const mitZugkraft = o => String((o&&o.zweck)||'').includes('Zugkraftermittlung');
 function ersteSeite(){
   const zug = mitZugkraft(objekt&&objekt.data);
-  const notiz = {k:'mess_notizen', label:'Systembeschreibung', type:'textarea', ph:'oder frei eingeben', toggle:true, chips:['Grundstab II','Grundstab III','Grundstab IV']};
+  const notiz = {k:'mess_notizen', label:'Beschreibung der Auflager', zeigLabel:true, type:'textarea', ph:'oder frei eingeben', toggle:true, chips:['„gelenkig“','„eingespannt“','Grundstab II','Grundstab III','Grundstab IV'], gruppen:[['„gelenkig“','„eingespannt“'],['Grundstab II','Grundstab III','Grundstab IV']], vorschau:true};
+  const lang = [1,2,3].map(n=>({k:'feld_l'+n, label:'Länge Feld '+n+' [m]', type:'text', mode:'decimal', imBild:true}));
   // Systembeschreibung (Grundstab …) nur bei linearem Bauteil; Zugkraft wie bisher bei Zugkraftermittlung
   const linear = istLinear(objekt&&objekt.data);
-  const felder = (zug ? [{k:'zugkraft', label:'Zugkraft', type:'text', mode:'decimal', unit:'kN', ph:'Zugkraft [kN]'}] : []).concat(linear ? [notiz] : []);
+  const felder = (zug ? [{k:'zugkraft', label:'Zugkraft', type:'text', mode:'decimal', unit:'kN', ph:'Zugkraft [kN]'}] : []).concat(linear ? [notiz].concat(lang) : []);
   return felder.length ? {sec:'Messung', q: 'System', fields: felder} : null;
 }
 // Glocken: nach der Anzahl folgt je Glocke eine eigene Seite (Masse, Läutefrequenz)
@@ -1090,7 +1095,7 @@ function pflichtFehlendKeys(t, o, d){
     if(sens.some(nr=>leer(posWert(o,ortKey(x.id,nr))))) add('sys:'+x.id+':ort', x.name+': Sensorstandort');
   }
   if(mitZugkraft(o) && leer(d.zugkraft)) add('zugkraft','Zugkraft');
-  if(istLinear(o) && leer(d.mess_notizen)) add('mess_notizen','Systembeschreibung');
+  if(istLinear(o) && leer(d.mess_notizen)) add('mess_notizen','Beschreibung der Auflager');
   if(erregungenVon(o).includes('Impulshammer')){
     if(leer(d.hammer_typ)) add('hammer_typ','Impulshammer');
     if(leer(anschlagWert(o,d))) add('hammer_ort','Anschlagpunkt');
@@ -1259,6 +1264,48 @@ async function onFiles(e){
 }
 $('#camIn').onchange = onFiles; $('#libIn').onchange = onFiles;
 
+// Vorlage-Skizze: Dreifeldträger, Stäbe ragen über die Endauflager hinaus (Überstand gestrichelt)
+let DREIFELD_C=null;
+let DREIFELD_POS=null;
+// Träger mit n Feldern (1–3) zeichnen; werte = Feldlängen als Text (nur beim Export), sonst nur Maßlinie
+function zeichneTraeger(n, werte){
+  const W=1200,H=werte?330:400,c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
+  g.fillStyle='#fff'; g.fillRect(0,0,W,H); g.strokeStyle='#000'; g.fillStyle='#000'; g.lineCap='round'; g.lineJoin='round';
+  const y=110, ue=70, m=16, x0=m, a=m+ue, rel = n===3?[0.8,1,0.8]:n===2?[1,1]:[1], tot=rel.reduce((p,q)=>p+q,0), L=(W-2*(m+ue))/tot;
+  const xs=[a]; rel.forEach(r=>xs.push(xs[xs.length-1]+r*L)); const x1=W-m, e=xs.length-1;   // Randfelder beim Dreifeldträger = 80 % des Innenfeldes
+  g.lineWidth=14; g.setLineDash([]); g.beginPath(); g.moveTo(xs[0],y); g.lineTo(xs[e],y); g.stroke();
+  g.lineCap='butt'; g.setLineDash([14,16]); g.beginPath(); g.moveTo(x0,y); g.lineTo(xs[0],y); g.moveTo(xs[e],y); g.lineTo(x1,y); g.stroke();
+  g.lineCap='round'; g.setLineDash([]); g.lineWidth=6;
+  const gnd=y+70, hatch=x=>{ g.beginPath(); g.moveTo(x-48,gnd); g.lineTo(x+48,gnd); g.stroke(); for(let i=-48;i<48;i+=12){ g.beginPath(); g.moveTo(x+i+12,gnd); g.lineTo(x+i,gnd+14); g.stroke(); } };
+  // festes Lager: erstes Innenlager (beim Einfeldträger links); alle anderen horizontal verschieblich
+  const festI = e>=2 ? 1 : 0;
+  xs.forEach((x,i)=>{
+    if(i===festI){ g.beginPath(); g.moveTo(x,y+6); g.lineTo(x-34,gnd); g.lineTo(x+34,gnd); g.closePath(); g.stroke(); }
+    else { g.beginPath(); g.moveTo(x,y+6); g.lineTo(x-32,y+60); g.lineTo(x+32,y+60); g.closePath(); g.stroke(); }
+    hatch(x); });
+  // Maßlinie unter den Feldern
+  const yd=y+112; g.lineWidth=4;
+  xs.forEach(x=>{ g.beginPath(); g.moveTo(x,gnd+22); g.lineTo(x,yd+14); g.stroke(); g.beginPath(); g.moveTo(x-11,yd+11); g.lineTo(x+11,yd-11); g.stroke(); });
+  g.beginPath(); g.moveTo(xs[0],yd); g.lineTo(xs[e],yd); g.stroke();
+  if(werte){ g.font='600 40px Arial, Helvetica, sans-serif'; g.textAlign='center'; g.textBaseline='top';
+    werte.forEach((w,i)=>g.fillText(w+' m',(xs[i]+xs[i+1])/2,yd+24)); }
+  // Sensor-Symbol bei 1/3 der Länge des mittleren Feldes (beim Dreifeldträger Feld 2, sonst Feld 1), ab linkem Lager
+  const fi = e===3?1:0, sx=xs[fi]+(xs[fi+1]-xs[fi])/3, cy=y-48; g.lineWidth=4.5; g.lineCap='round';
+  g.beginPath(); g.arc(sx,cy,12,0,Math.PI*2); g.fill();
+  g.beginPath(); g.moveTo(sx,cy+23); g.lineTo(sx,y-6); g.stroke();
+  [26,41].forEach(rr=>{ g.beginPath(); g.arc(sx,cy,rr,-0.87,0.87); g.stroke(); g.beginPath(); g.arc(sx,cy,rr,Math.PI-0.87,Math.PI+0.87); g.stroke(); });
+  if(!werte) DREIFELD_POS={mx:[0,1,2].map(i=>((xs[i]+xs[i+1])/2)/W*100), top:(yd+16)/H*100};
+  return c;
+}
+function dreifeldCanvas(){ return DREIFELD_C || (DREIFELD_C=zeichneTraeger(3,null)); }
+// Für den Word-Export: Skizze mit so vielen Feldern, wie Längen eingetragen sind (nichts, wenn keine)
+async function traegerBild(d){
+  const w=[1,2,3].map(n=>String((d||{})['feld_l'+n]||'').trim()).filter(Boolean);
+  if(!w.length) return null;
+  const c=zeichneTraeger(w.length,w); const bl=await new Promise(r=>c.toBlob(r,'image/jpeg',0.95));
+  return {bytes:new Uint8Array(await bl.arrayBuffer()), width:c.width, height:c.height, caption:''};
+}
+function dreifeldBild(){ return new Promise(r=>dreifeldCanvas().toBlob(r,'image/jpeg',0.92)); }
 function openDraw(){
   const ov=document.createElement('div'); ov.className='draw';
   const colors=['#111111','#1f5fbf','#c62828'];
@@ -1653,7 +1700,7 @@ const zuListen = new Set();
 function objektZeilen(o, oImgs, sysListe, fehl){
   fehl = fehl || new Set();
   return [['Messobjekt', o.messobjekt, 0], ['Zweck der Messung', o.zweck, 1]]
-    .map(([l,v,i])=>`<button class="rv ${fehl.has(['messobjekt','zweck'][i])?'fehlt':''} ${i===1?'nolinie':''} ${i===0?'nolinie':''}" data-kat="${i===0?'Messobjekt':'Zweck und Anregung'}" data-ostep="${i}"><span class="k">${l}</span><span class="v">${v?esc(v):(fehl.has(['messobjekt','zweck'][i])?'fehlt':'–')}</span></button>${i===0?`<button class="rv" data-kat="Messobjekt" data-ostep="0"><span class="k">Lineares Bauteil</span><span class="v">${istLinear(o)?'ja':'nein'}</span></button>`:''}`).join('')
+    .map(([l,v,i])=>`<button class="rv ${fehl.has(['messobjekt','zweck'][i])?'fehlt':''} ${i===1?'nolinie':''} ${i===0?'nolinie':''}" data-kat="${i===0?'Messobjekt':'Zweck und Anregung'}" data-ostep="${i}"><span class="k">${l}</span><span class="v">${v?esc(v):(fehl.has(['messobjekt','zweck'][i])?'fehlt':'–')}</span></button>${i===0?`<button class="rv" data-kat="Messobjekt" data-ostep="0"><span class="k">Lineares Bauteil</span><span class="v">${istLinear(o)?'ja':'nein'}</span></button>`:''}`+(i===0?[['Geschoss','geschoss'],['Bauteil','bauteil'],['Achse','achse']].map(([l,k])=>`<button class="rv nolinie" data-kat="Messobjekt" data-ostep="0"><span class="k">${l}</span><span class="v">${String(o[k]||'').trim()?esc(o[k]):'–'}</span></button>`).join(''):'')).join('')
     + `
       <button class="rv ${fehl.has('erregung')?'fehlt':''}" data-kat="Zweck und Anregung" data-ostep="${OBJEKT_STEPS.length}"><span class="k">Art der Anregung</span><span class="v">${o.erregung?esc(o.erregung):(fehl.has('erregung')?'fehlt':'–')}</span></button>
       <button class="rv" data-kat="Skizze und Fotos" data-ostep="${OBJEKT_STEPS.length+1}"><span class="k">Skizze und Fotos</span><span class="v">${oImgs.length?oImgs.length+' Bild'+(oImgs.length>1?'er':''):'–'}</span></button>`
@@ -1662,6 +1709,7 @@ function objektZeilen(o, oImgs, sysListe, fehl){
           const sens=sensorenVon(x.id,o), du=val(o,'sys_'+x.id+'_dauer',SYS_CFG[x.id].dauer.def), pt=SYS_CFG[x.id].sensorText;
           const rec=sysRec(x.id), g=(k,r)=>String(val(o,'sys_'+x.id+'_'+k,rec[r])||'').trim();
           const zeilen=[
+            ['Messsystem', x.name, 3, false],
             ['Gerätetyp', g('geraetetyp','geraetetyp'), 3, false],
             ['AD-Wandlung', abtastAnz(g('abtast','abtastrate')), 3, fehl.has('sys:'+x.id+':abtast')],
             pt ? ['Sensor', sens.join('')||'keine', 3, fehl.has('sys:'+x.id+':sens')] : ['Sensor', g('sensortyp','sensortyp'), 3, false],
@@ -1816,10 +1864,15 @@ function recentValues(k){
   const seen=[]; for(const m of pool.slice().sort((a,b)=>(b.updated||0)-(a.updated||0))){ const v=String(m.data[k]||'').trim(); if(v && !seen.includes(v) && m.id!==cur.id) seen.push(v); if(seen.length>=4) break; } return seen;
 }
 function fieldHTML(f, single){
+  if(f.imBild) return '';
   const v = cur.data[f.k]==null?'':cur.data[f.k];
   const id = 'f_'+f.k;
   if(f.type==='switch') return `<div class="field"><div class="chips stack noic"><label class="chip schalter-zeile" for="${id}"><span>${esc(f.label)}</span><input type="checkbox" class="ios-switch" id="${id}" data-switch="${f.k}" ${cur.data[f.k]!=='0'?'checked':''}></label></div></div>`;
-  let h = `<div class="field">${(!single && f.label)?`<label for="${id}">${esc(f.label)}</label>`:''}`;
+  let vor='';
+  if(f.vorschau){ const ci=dreifeldCanvas(), P=DREIFELD_POS;
+    vor = `<div class="dreifeld" style="position:relative; margin:0 0 18px"><img data-vorschau="${f.k}" src="${ci.toDataURL('image/jpeg',0.92)}" alt="Dreifeldträger" style="display:block; width:100%; background:#fff">`
+      + [1,2,3].map(n=>`<input class="inp dflen" id="f_feld_l${n}" data-k="feld_l${n}" inputmode="decimal" placeholder="l [m]" aria-label="Länge Feld ${n} [m]" value="${esc(cur.data['feld_l'+n]||'')}" autocomplete="off" style="position:absolute; left:${P.mx[n-1]}%; top:${P.top}%; width:24%; transform:translateX(-50%); text-align:center; padding:6px 4px; min-height:0; height:auto">`).join('')+`</div>`; }
+  let h = `<div class="field" ${f.nurLinear?`data-nurlinear style="${istLinear(cur.data)?'':'display:none'}"`:''}>${((!single||f.zeigLabel) && f.label)?`<label for="${id}">${esc(f.label)}</label>`:''}`;
   if(f.type==='compass'){
     h += `<div class="compass">${COMPASS.map(([s,l])=>{ const val = s==='–'?'windstill':`${l} (${s})`; return `<button class="chip ${v===val?'on':''}" data-set="${f.k}" data-val="${esc(val)}">${s==='–'?'still':s}</button>`; }).join('')}</div>
       <input class="inp" id="${id}" data-k="${f.k}" value="${esc(v)}" placeholder="oder frei eingeben, z. B. drehend" enterkeyhint="next">`;
@@ -1845,8 +1898,9 @@ function fieldHTML(f, single){
     h += `<div class="chips stack noic">${f.chips.map(c=>`<div class="chip srow ${parts.includes(c)?'on':''}" role="button" data-tog="${f.k}" data-val="${esc(c)}"><span>Sensor</span><input class="sname" data-sid="${f.rename}" data-alt="${esc(c)}" value="${esc(c)}" inputmode="numeric" autocomplete="off" aria-label="Bezeichnung Sensor ${esc(c)}"></div>`).join('')}</div>`;
   } else if(f.chips){
     const parts = String(v).split(',').map(s=>s.trim());
-    h += `<div class="chips ${f.stack?'stack':''} ${f.stack&&!f.icons?'noic':''}">${f.chips.map(c=>`<button class="chip ${(f.toggle?parts.includes(c):v===c)?'on':''} ${!f.stack && String(c).length===1?'rund':''}" data-${f.toggle?'tog':'set'}="${f.k}" data-val="${esc(c)}">${f.icons&&f.icons[c]?`<span class="chip-ic">${sysIcon(f.icons[c])}</span>`:''}<span>${esc(f.chipLabel?f.chipLabel(c):f.parse?klammer(c,f.parse):c)}</span></button>`).join('')}</div>`;
+    h += (f.gruppen||[f.chips]).map(grp=>`<div class="chips ${f.stack?'stack':''} ${f.stack&&!f.icons?'noic':''} ${f.gleich?'gleich':''} ${f.gruppen?'gleich3':''}" ${f.gleich?`style="--gn:${f.chips.length}"`:''}>${grp.map(c=>`<button class="chip ${(f.toggle?parts.includes(c):v===c)?'on':''} ${!f.stack && String(c).length===1?'rund':''}" ${/^Grundstab/.test(c)?`data-grund="1" ${einfeldTraeger(cur.data)||parts.includes(c)?'':'disabled'}`:''} data-${f.toggle?'tog':'set'}="${f.k}" data-val="${esc(c)}">${f.icons&&f.icons[c]?`<span class="chip-ic">${sysIcon(f.icons[c])}</span>`:''}<span>${esc(f.chipLabel?f.chipLabel(c):f.parse?klammer(c,f.parse):c)}</span></button>`).join('')}</div>`).join('');
   }
+
   if(f.parse) h += `<p class="muted small" data-frqinfo="${f.k}" style="margin:8px 0 0${wertFehlt(v,f.parse)?'; color:var(--danger)':''}">${esc(wertInfo(v,f.parse))}</p>`;
   if(f.hint) h += `<p class="muted small" style="margin:10px 0 0">${esc(f.hint)}</p>`;
   if(istUebernommen(f.k)) h += `<p class="muted small" data-carry="${f.k}" style="margin:8px 0 0">↺ aus vorheriger Messung</p>`;
@@ -1856,7 +1910,7 @@ function fieldHTML(f, single){
     const r = recentValues(f.k).filter(x=>x!==v);
     if(r.length) h += `<div class="recent">Zuletzt verwendet</div><div class="chips">${r.map(c=>`<button class="chip" data-set="${f.k}" data-val="${esc(c)}">${esc(c.length>40?c.slice(0,40)+'…':c)}</button>`).join('')}</div>`;
   }
-  return h+'</div>';
+  return vor+h+'</div>';
 }
 
 async function showStep(){
@@ -1879,7 +1933,7 @@ async function showStep(){
       <div class="thumbs">${imgs.map((im,i)=>`<div class="thumb"><img data-img="${im.id}" alt="Bild ${i+1}">
         <div class="row"><input class="inp" data-cap="${im.id}" value="${esc(im.caption||'')}" placeholder="Bildunterschrift"><button class="icon-btn" style="flex:0;color:var(--danger)" data-delimg="${im.id}" aria-label="Bild löschen">✕</button></div></div>`).join('')}</div>`;
   } else {
-    body = s.dateiListe ? dateiListeHTML(s) : s.posListe ? posListeHTML(s) : s.fields.map(f=>fieldHTML(f, s.fields.length===1)).join('')
+    body = s.dateiListe ? dateiListeHTML(s) : s.posListe ? posListeHTML(s) : s.fields.map(f=>fieldHTML(f, s.fields.filter(x=>!x.imBild).length===1)).join('')
       + (s.now?`<button class="btn" id="nowBtn">Uhrzeit jetzt</button>`:'')
       + (s.today?`<button class="btn" id="todayBtn">Heute</button>`:'');
   }
@@ -1968,6 +2022,7 @@ async function pflichtAbfrage(m){
 function finishWizard(){ sitzung=null; einzelEdit=null; saveCur().then(()=> kind==='termin' ? (imObjekt() ? showObjekt() : showTermin()) : kind==='objekt' ? showObjekt() : showReview()); }
 
 function bindStep(s){
+  requestAnimationFrame(gleicheBreite);
   const STEPS = stepsOf(kind);
   $('#upBtn').onclick = ()=>{ sitzung=null; einzelEdit=null; kind==='termin' ? showHome() : kind==='objekt' ? showTermin() : showObjekt(); };
   $('#revBtn').onclick = ()=>{
@@ -2006,7 +2061,7 @@ function bindStep(s){
   // Dateibezeichnung: beim Antippen alles markieren, damit die neue Eingabe den alten Wert ersetzt
   document.querySelectorAll('.dinp').forEach(el=>el.addEventListener('focus',()=>setTimeout(()=>{ try{ el.setSelectionRange(0, el.value.length); }catch(e){ el.select(); } },0)));
   $('#ardKeine') && ($('#ardKeine').onclick = ()=>{ cur.data.ard_keine = cur.data.ard_keine ? '' : '1'; scheduleSave(); showStep(); });
-  document.querySelectorAll('[data-switch]').forEach(el=>el.onchange=()=>{ cur.data[el.dataset.switch] = el.checked ? '' : '0'; scheduleSave(); });
+  document.querySelectorAll('[data-switch]').forEach(el=>el.onchange=()=>{ cur.data[el.dataset.switch] = el.checked ? '' : '0'; document.querySelectorAll('[data-nurlinear]').forEach(d=>d.style.display=el.checked?'':'none'); scheduleSave(); });
   document.querySelectorAll('.chips:not(.stack) .chip').forEach(b=>{ b.dataset.txt=b.textContent.trim(); });
   // Sensor auf der Standort-Seite (de)aktivieren
   document.querySelectorAll('[data-stog]').forEach(b=>b.onclick=()=>{
@@ -2097,10 +2152,23 @@ function bindStep(s){
     document.querySelectorAll('[data-delimg]').forEach(b=>b.onclick=async()=>{ if(confirm('Bild löschen?')){ await del('bilder',b.dataset.delimg); showStep(); } });
   }
 }
+// Einfeldträger = genau eine Feldlänge eingetragen; nur dann sind die Grundstäbe wählbar
+const einfeldTraeger = d => [1,2,3].filter(n=>String((d||{})['feld_l'+n]||'').trim()).length===1;
+// Alle Pillen einer Gruppe so breit wie die breiteste (minimale gemeinsame Breite)
+function gleicheBreite(){
+  const cs=[...document.querySelectorAll('.chips.gleich3 .chip')]; if(!cs.length) return;
+  cs.forEach(c=>c.style.width=''); const w=Math.max(...cs.map(c=>c.getBoundingClientRect().width));
+  if(w>0) cs.forEach(c=>c.style.width=Math.ceil(w)+'px');
+}
+function grundstabSperre(){
+  const frei=einfeldTraeger(cur&&cur.data);
+  document.querySelectorAll('.chip[data-grund]').forEach(b=>{ b.disabled = !(frei || b.classList.contains('on')); });
+}
 function syncChips(k){
   const v=String(cur.data[k]||''), parts=v.split(',').map(s=>s.trim());
   document.querySelectorAll(`[data-set="${k}"]`).forEach(b=>b.classList.toggle('on', v===b.dataset.val));
   document.querySelectorAll(`[data-tog="${k}"]`).forEach(b=>b.classList.toggle('on', parts.includes(b.dataset.val)));
+  grundstabSperre();
 }
 
 
@@ -2336,7 +2404,7 @@ function reportFields(m){
     datum:[fmtDate(t.datum), d.uhrzeit?d.uhrzeit+' Uhr':''].filter(Boolean).join('\n'),
     windgeschwindigkeit:t.windgeschwindigkeit, windrichtung:t.windrichtung, temperatur:fmtTemp(t.temperatur),
     firma:t.firma, messleiter:t.messleiter,
-    zweck:o.zweck, messobjekt:[o.messobjekt, o.objekt_notizen, d.mess_notizen, zugkraftText(d.zugkraft)?'Zugkraft: '+zugkraftText(d.zugkraft):''].filter(x=>String(x||'').trim()).join('\n'), ...geraeteFelder(t,d,o),
+    zweck:o.zweck, messobjekt:[o.messobjekt, [['Geschoss',o.geschoss],['Bauteil',o.bauteil],['Achse',o.achse]].filter(p=>String(p[1]||'').trim()).map(p=>p[0]+': '+String(p[1]).trim()).join('; '), o.objekt_notizen, d.mess_notizen, [1,2,3].some(n=>String(d['feld_l'+n]||'').trim()) ? 'Feldlängen: '+[1,2,3].map(n=>mitEinheit(String(d['feld_l'+n]||'').trim()||'–','m')).join('; ') : '', zugkraftText(d.zugkraft)?'Zugkraft: '+zugkraftText(d.zugkraft):''].filter(x=>String(x||'').trim()).join('\n'), ...geraeteFelder(t,d,o),
     ...sensorFelder(t,o,d), erregung:erregungText(o,d),
     ergaenzungen: lines([['Personenanzahl',d.personen],['Gewicht',mitEinheit(d.gewicht,'kg')],['Erkennbare Quellen',d.amb_quellen],
       ['Impulshammer-Produkt',d.hammer_produkt],['Impulshammer',mitEinheit(d.hammer_typ,'g')],['Hammerspitze',d.hammer_spitze],['Anschlagrichtung',d.hammer_richtung],
@@ -2373,6 +2441,7 @@ function fileName(m){ const d=m.data, t=terminOf(m), o=objektOf(m); return (safe
 async function buildDocx(m){
   if(!TEMPLATE_BYTES) TEMPLATE_BYTES=b64ToBytes(TEMPLATE_B64);
   const images=[];
+  if(istLinear(objektOf(m))){ const tb=await traegerBild(m.data); if(tb) images.push(tb); }
   for(const im of (await imgsOf(m.oid)).concat(await imgsOf(m.id))) images.push({bytes:new Uint8Array(await im.blob.arrayBuffer()), width:im.w, height:im.h, caption:im.caption});
   const zip = await buildReportDocx(JSZip, TEMPLATE_BYTES, reportFields(m), images);
   return zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document', compression:'DEFLATE'});
