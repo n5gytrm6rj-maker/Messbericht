@@ -573,7 +573,7 @@ const SYSTEME = SYSTEME_BASIS.slice();   // Basissysteme + selbst angelegte (set
 const SYS_DEFAULTS = {
   ni:      {geraetetyp:'NI-9234, NI cDAQ-9174', sensortyp:'PCB 352A24', messgenauigkeit:'±50·g', aafilter:'11,52 [kHz]', abtastrate:'25600 [Hz] (1/(0,039[ms]))', sensoren:'71, 72, 73, 74, 75, 76'},
   arduino: {geraetetyp:'MKR Zero', sensortyp:'MPU 6050', messgenauigkeit:'±4·g', aafilter:'94', abtastrate:'200 [Hz] (1/(0,005[s]))', sensoren:'01, 02, 03'},
-  phyphox: {geraetetyp:'(Smartphone-App)', sensortyp:'', messgenauigkeit:'„unbekannt“', aafilter:'„unbekannt“', abtastrate:'100 [Hz] (1/(0,01[s]))', sensor:'iPhone13,1, (26.6.1)'}
+  phyphox: {geraetetyp:'(Smartphone-App)', sensortyp:'', messgenauigkeit:'„unbekannt“', aafilter:'„unbekannt“', abtastrate:'100 [Hz] (1/(0,01[s]))', sensor:'iPhone 9,1, (15.8.8)'}
 };
 const DEFAULTS = { firma:'TU München', messleiter:'Clemens Koller' };
 function freshSettings(){ return Object.assign({}, DEFAULTS, {sys: JSON.parse(JSON.stringify(SYS_DEFAULTS)), custom:[]}); }
@@ -588,6 +588,7 @@ function loadSettings(){
     // Noch nie eingetragene Abtastrate der Messsysteme übernimmt die neue Voreinstellung
     // Anti-Aliasing-Filter: nur Zahl in Hz (früherer Text wie „94 Hz (Tiefpassfilter)“ → 94)
     Object.values(s.sys).forEach(r=>{ if(r && typeof r.aafilter==='string' && !/unbekannt|khz/i.test(r.aafilter) && !/^[\d.,\s-]*$/.test(r.aafilter)){ const m=/[-+]?\d+(?:[.,]\d+)?/.exec(r.aafilter); r.aafilter=m?m[0].replace('.',','):''; } });
+    if(s.sys.phyphox && s.sys.phyphox.sensor==='iPhone13,1, (26.6.1)') s.sys.phyphox.sensor=SYS_DEFAULTS.phyphox.sensor; // nur Einstellungen für neue Termine
     if(s.sys.ni && !String(s.sys.ni.messgenauigkeit||'').trim()) s.sys.ni.messgenauigkeit=SYS_DEFAULTS.ni.messgenauigkeit; // nur Einstellungen für neue Termine
     if(s.sys.ni && (!String(s.sys.ni.sensortyp||'').trim() || s.sys.ni.sensortyp==='Model 352A24')) s.sys.ni.sensortyp=SYS_DEFAULTS.ni.sensortyp; // nur Einstellungen für neue Termine
     Object.values(s.sys).forEach(r=>{ if(r && typeof r.geraetetyp==='string') r.geraetetyp=r.geraetetyp.replace(/\s*\n\s*/g,', '); });
@@ -672,7 +673,7 @@ const OBJEKT_TAIL = [
 const SYS_CFG = {
   ni:      { dauer:{def:'10 s', chips:['10 s','30 s','60 s','120 s']}, sensoren:['71','72','73','74','75','76'] },
   arduino: { dauer:{def:'variabel', chips:['variabel','60 s','120 s','300 s']}, sensoren:['01','02','03'] },
-  phyphox: { dauer:{def:'41,0 s', chips:['1,3 s','2,5 s','5,1 s','10,2 s','20,5 s','41,0 s']}, sensorText:'iPhone13,1, (26.6.1)' }
+  phyphox: { dauer:{def:'41,0 s', chips:['1,3 s','2,5 s','5,1 s','10,2 s','20,5 s','41,0 s']}, sensorText:'iPhone 9,1, (15.8.8)' }
 };
 // Selbst angelegte Messsysteme (Einstellungen → Messsysteme → +) in die Systemliste übernehmen
 function syncSysteme(){
@@ -2476,7 +2477,7 @@ function geraeteFelder(t, d, o){
   const mehr = gew.length>1;
   const liste = (k,u) => gew.map(x=>[x.name, mitEinheit(((v)=>k==='messgenauigkeit'?genauAnz(v):v)(String(val(o,'sys_'+x.id+'_'+(k==='abtastrate'?'abtast':k==='messgenauigkeit'?'genau':k), k==='messgenauigkeit'?genauVon(sysRec(x.id,t),x.id):sysRec(x.id,t)[k])||'').trim()), u)]).filter(p=>p[1])
     .map(([n,v])=> mehr ? n+': '+v : v).join('\n');
-  return { geraetetyp: gew.map(x=>String(val(o,'sys_'+x.id+'_geraetetyp',sysRec(x.id,t).geraetetyp)||x.name).trim()).join('\n'), aafilter: genauBericht(liste('aafilter','Hz')), abtastrate: abtastBericht(liste('abtastrate')), messgenauigkeit: genauBericht(liste('messgenauigkeit')), sensortyp: liste('sensortyp') };
+  return { geraetetyp: gew.map(x=>{ const v=String(val(o,'sys_'+x.id+'_geraetetyp',sysRec(x.id,t).geraetetyp)||x.name).trim(); return mehr ? x.name+': '+v : v; }).join('\n'), aafilter: genauBericht(liste('aafilter','Hz')), abtastrate: abtastBericht(liste('abtastrate')), messgenauigkeit: genauBericht(liste('messgenauigkeit')), sensortyp: liste('sensortyp') };
 }
 // Art der Anregung, bei Personen mit der gewählten Bewegung
 function erregungText(o,d){
